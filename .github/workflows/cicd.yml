@@ -41,21 +41,21 @@ jobs:
       - name: Create .env file
         run: echo "SITE_URL=${{ env.SITE_URL }}" >> .env
       - name: Build Docker Image
-        run: docker build -t [repository link]
+        run: docker build -t jadendocks/ask_easy
       - name: Login to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Publish Docker Image to Docker Hub
-        run: docker push [repository link]:latest
+        run: docker push jadendocks/ask_easy:latest
       
   deploy:
     needs: build
     runs-on: self-hosted
     steps:
       - name: Pull Image from Docker Hub
-        run: docker pull [repository link]:latest
+        run: docker pull jadendocks/ask_easy:latest
       - name: Stop and Remove Existing Container
-        run: docker rm -f [container name]
+        run: docker rm -f ask_easy
       - name: Run Docker Container
-        run: docker run -d -p 3000:3000 --name [container name] [repository link]:latest
+        run: docker run -d -p 3000:3000 --name ask_easy jadendocks/ask_easy:latest
 
   
