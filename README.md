@@ -1,5 +1,3 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
 ## Workflow
 
 Please only use names from the assigned board, make a new ticket if needed.
@@ -43,6 +41,7 @@ A conventional commit message follows the following criteria,
 
 The following are examples of amazing conventional commit messages:
 
+```bash
 feat: add JWT-based authentication
 fix: handle null user response from database
 docs: update setup instructions for local development
@@ -51,5 +50,6 @@ test: add unit tests for login endpoint
 chore: bump next.js from 14.0.2 to 14.1.0
 perf: reduce API response time by memoizing queries
 ci: add lint and test workflow
+```
 
 Please do not make up your own <types> (unless you asked the team first sometimes this is needed but rarely) use one of the <types> in he above examples.
