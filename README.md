@@ -3,6 +3,8 @@
 Please only use names from the assigned board, make a new ticket if needed.
 
 ```bash
+git checkout main
+git pull
 git checkout -b NAME_NUM
 ```
 
