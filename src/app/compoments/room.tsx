@@ -4,11 +4,11 @@ import SlideViewer from "./slideViewer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function Room() {
-  const isDesktop = useMediaQuery("(min-width: 640px)");
+  const isMdSize = useMediaQuery("(min-width: 1024px)");
 
   return (
     <div className="h-screen w-full bg-background font-sans">
-      <ResizablePanelGroup direction={isDesktop ? "horizontal" : "vertical"}>
+      <ResizablePanelGroup direction={isMdSize ? "horizontal" : "vertical"}>
         <ResizablePanel defaultSize={75} minSize={30}>
           <SlideViewer />
         </ResizablePanel>
