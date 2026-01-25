@@ -4,7 +4,7 @@ import SlideViewer from "./slideViewer";
 
 export default function Room() {
   return (
-    <div className="flex h-screen w-full flex-row bg-background font-sans">
+    <div className="flex h-screen w-full flex-col sm:flex-row bg-background font-sans">
       <SlideViewer />
       <ClassChat />
     </div>

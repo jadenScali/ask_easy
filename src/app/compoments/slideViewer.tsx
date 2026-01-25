@@ -29,7 +29,7 @@ export default function SlideViewer() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] w-full gap-6 p-4 bg-gray-50 rounded-lg">
+    <div className="flex flex-col items-center justify-center w-full h-full gap-6 p-4 bg-gray-50 rounded-lg overflow-hidden flex-1">
       <EmbedPDF engine={engine} plugins={plugins}>
         {({ activeDocumentId }) =>
           activeDocumentId && (
@@ -40,23 +40,16 @@ export default function SlideViewer() {
                 }
 
                 return (
-                  <div className="flex flex-col items-center gap-4 w-full max-w-4xl">
-                    <div
-                      className="relative bg-white shadow-lg border border-gray-200 overflow-hidden"
-                      style={{
-                        width: "100%",
-                        height: "600px", // Fixed height for the viewer window
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <div className="w-full h-full">
-                        <RenderLayer
-                          documentId={activeDocumentId}
-                          pageIndex={pageIndex}
-                          scale={3}
-                        />
+                  <div className="flex flex-col items-center gap-4 w-full h-full min-h-0">
+                    <div className="relative bg-white shadow-lg border border-gray-200 overflow-hidden w-full flex-1 min-h-0 flex items-center justify-center bg-gray-900/5">
+                      <div className="relative w-full h-full flex items-center justify-center p-4">
+                        <div className="[&>canvas]:!w-auto [&>canvas]:!h-auto [&>canvas]:!max-w-full [&>canvas]:!max-h-full [&>canvas]:object-contain shadow-xl">
+                          <RenderLayer
+                            documentId={activeDocumentId}
+                            pageIndex={pageIndex}
+                            scale={2}
+                          />
+                        </div>
                       </div>
                     </div>
 
