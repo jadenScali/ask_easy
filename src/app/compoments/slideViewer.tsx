@@ -41,13 +41,13 @@ export default function SlideViewer() {
                 }
 
                 return (
-                  <div className="flex flex-col flex-1 w-full">
-                    <div className="relative flex-1 w-full flex items-center justify-center">
+                  <div className="flex flex-col flex-1 w-full min-h-0">
+                    <div className="relative flex-1 w-full flex items-center justify-center min-h-0">
                       <RenderLayer
                         documentId={activeDocumentId}
                         pageIndex={pageIndex}
                         scale={3}
-                        className="max-w-full max-h-full object-contain block"
+                        className="max-w-full max-h-full object-contain block [&_canvas]:!max-w-full [&_canvas]:!max-h-full [&_canvas]:!object-contain"
                       />
                     </div>
 
