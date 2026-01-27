@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, ChevronsLeftRight, Presentation } from "lucide-react";
-
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF } from "@embedpdf/core/react";
 import { usePdfiumEngine } from "@embedpdf/engines/react";
@@ -52,11 +51,10 @@ export default function SlideViewer() {
                       />
                     </div>
 
-                    <div className="flex items-center justify-center gap-4 pb-2">
-                      {/* Manual / Automatic Toggle */}
+                    <div className="flex items-center justify-center gap-4 p-4">
                       <button
                         onClick={() => setIsManual(!isManual)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-stone-200 text-foreground rounded-md hover:bg-stone-300 transition-colors font-medium"
                       >
                         {isManual ? (
                           <>
@@ -74,7 +72,7 @@ export default function SlideViewer() {
                       {isManual && (
                         <>
                           <button
-                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            className="w-10 h-10 flex items-center justify-center bg-foreground hover:bg-foreground/80 text-white rounded-md transition-colors"
                             onClick={() =>
                               setPageIndex((p) => {
                                 const total = 100;
@@ -85,12 +83,12 @@ export default function SlideViewer() {
                             <ChevronLeft className="w-6 h-6" />
                           </button>
 
-                          <span className="text-sm font-medium text-gray-600">
+                          <span className="text-sm font-medium text-foreground">
                             Slide {pageIndex + 1}
                           </span>
 
                           <button
-                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                            className="w-10 h-10 flex items-center justify-center bg-foreground hover:bg-foreground/80 text-white rounded-md transition-colors"
                             onClick={() =>
                               setPageIndex((p) => {
                                 const total = 100;
