@@ -10,7 +10,7 @@ import { session } from "./redisKeys";
 export async function cacheSession(
   sessionId: string,
   data: unknown,
-  ttlSeconds: number,
+  ttlSeconds: number
 ): Promise<void> {
   try {
     const key = session(sessionId);
@@ -27,9 +27,7 @@ export async function cacheSession(
  * @param sessionId - The session identifier
  * @returns The cached data or null if not found/expired
  */
-export async function getSessionCache<T = unknown>(
-  sessionId: string,
-): Promise<T | null> {
+export async function getSessionCache<T = unknown>(sessionId: string): Promise<T | null> {
   try {
     const key = session(sessionId);
     const cached = await redisCache.get(key);
