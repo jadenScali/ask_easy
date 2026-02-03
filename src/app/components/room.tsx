@@ -1,6 +1,6 @@
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+
 import ClassChat from "./classChat";
-import SlideViewer from "./slideViewer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 export default function Room() {
@@ -9,10 +9,6 @@ export default function Room() {
   return (
     <div className="h-screen w-full bg-background font-sans">
       <ResizablePanelGroup direction={isMdSize ? "horizontal" : "vertical"}>
-        <ResizablePanel defaultSize={75} minSize={0}>
-          <SlideViewer />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
         <ResizablePanel defaultSize={25} minSize={0}>
           <ClassChat />
         </ResizablePanel>
