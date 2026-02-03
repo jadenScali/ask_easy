@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+.pnpm-store
 /.pnp
 .pnp.*
 .pnpm-store/
@@ -41,5 +42,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-/src/generated/prisma
