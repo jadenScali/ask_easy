@@ -40,27 +40,27 @@ enum QuestionStatus {
 // =============================================================================
 
 model User {
-  id    String @id @default(cuid())
+  id     String @id @default(cuid())
   utorid String @unique
-  email String @unique
-  name  String
-  role  Role   @default(STUDENT)
+  email  String @unique
+  name   String
+  role   Role   @default(STUDENT)
 
-  enrollments    CourseEnrollment[]
-  createdCourses Course[]
+  enrollments     CourseEnrollment[]
+  createdCourses  Course[]
   createdSessions Session[]
-  questions      Question[]
-  answers        Answer[]
-  upvotes        QuestionUpvote[]
+  questions       Question[]
+  answers         Answer[]
+  upvotes         QuestionUpvote[]
 
   @@index([role])
 }
 
 model Course {
-  id        String   @id @default(cuid())
-  code      String
-  name      String
-  semester  String
+  id          String @id @default(cuid())
+  code        String
+  name        String
+  semester    String
   createdById String
 
   createdBy   User               @relation(fields: [createdById], references: [id])
@@ -74,7 +74,7 @@ model Course {
 model CourseEnrollment {
   id       String @id @default(cuid())
   userId   String
-  courseId  String
+  courseId String
   role     Role
 
   user   User   @relation(fields: [userId], references: [id])
@@ -87,7 +87,7 @@ model CourseEnrollment {
 
 model Session {
   id                   String        @id @default(cuid())
-  courseId              String
+  courseId             String
   createdById          String
   title                String
   joinCode             String        @unique
