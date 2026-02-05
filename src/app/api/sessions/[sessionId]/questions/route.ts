@@ -53,6 +53,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Parse optional query parameters for filtering
     const { searchParams } = new URL(request.url);
     const visibility = searchParams.get("visibility");
+
+    // TO-DO: if visibility chosen is INSTRUCTOR_ONLY, check if the user calling this function is an instructor or not, through auth
+
     const status = searchParams.get("status");
 
     // Build dynamic where clause
@@ -148,6 +151,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
     }
 
+    // TO-DO: check with auth to make sure that authorId being sent matches with the auth id, prevent custom body requests
+
     // 1. Validate authorId is provided
     if (!body.authorId || typeof body.authorId !== "string") {
       return NextResponse.json({ error: "Author ID is required." }, { status: 400 });
@@ -165,20 +170,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: visibilityValidation.error }, { status: 400 });
     }
 
-    // 4. Check rate limit using shared validation
+    // 4. Validate session using shared validation
+    const sessionValidation = await validateSessionForQuestions(sessionId);
+    if (!sessionValidation.valid) {
+      const statusCode = sessionValidation.error === "Session not found." ? 404 : 403;
+      return NextResponse.json({ error: sessionValidation.error }, { status: statusCode });
+    }
+
+    // 5. Check rate limit using shared validation
     const isRateLimited = await checkQuestionRateLimit(body.authorId);
     if (isRateLimited) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please wait before asking another question." },
         { status: 429 }
       );
-    }
-
-    // 5. Validate session using shared validation
-    const sessionValidation = await validateSessionForQuestions(sessionId);
-    if (!sessionValidation.valid) {
-      const statusCode = sessionValidation.error === "Session not found." ? 404 : 403;
-      return NextResponse.json({ error: sessionValidation.error }, { status: statusCode });
     }
 
     // 6. Create the question
