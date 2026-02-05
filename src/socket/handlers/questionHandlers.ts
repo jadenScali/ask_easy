@@ -149,7 +149,8 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const isRateLimited = await checkQuestionRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You have reached the question limit. Please wait before asking another question.",
+          message:
+            "You have reached the question limit. Please wait before asking another question.",
         });
         return;
       }
