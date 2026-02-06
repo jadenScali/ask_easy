@@ -11,6 +11,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml .npmrc* ./
 RUN pnpm config set node-linker hoisted && pnpm install --frozen-lockfile
 
+FROM base AS prod-deps
+
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml .npmrc* ./
+RUN pnpm config set node-linker hoisted && pnpm install --frozen-lockfile --prod
+
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -29,13 +37,22 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# Production node_modules (includes socket.io, ioredis, tsx, etc.)
+COPY --from=prod-deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# package.json (needed by tsx / module resolution)
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Next.js build output
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Next.js & TypeScript config (needed at runtime by the custom server)
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.ts ./
+COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./
+
+# Source files needed for the custom server (tsx transpiles at runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 
 USER nextjs
 
@@ -44,4 +61,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["npx", "tsx", "src/server.ts"]
