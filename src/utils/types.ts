@@ -8,6 +8,7 @@ interface Comment {
   timestamp: string;
   votes: number;
   replies?: Comment[];
+  isResolved: boolean;
 }
 
 export default Comment;
