@@ -11,6 +11,7 @@ const PLACEHOLDER_COMMENTS: Comment[] = [
       "I thought I understood recursion until the prof said 'it just calls itself' and moved on like that explained everything.",
     timestamp: "2 hours ago",
     votes: 96,
+    isResolved: false,
     replies: [
       {
         id: 11,
@@ -20,6 +21,7 @@ const PLACEHOLDER_COMMENTS: Comment[] = [
           "The base case makes sense. The recursive step makes sense. Them together? Absolutely not.",
         timestamp: "1 hour ago",
         votes: 54,
+        isResolved: false,
         replies: [
           {
             id: 111,
@@ -29,6 +31,7 @@ const PLACEHOLDER_COMMENTS: Comment[] = [
               "My program works without recursion, but the assignment says I *must* use it, so now it doesn't work at all.",
             timestamp: "45 mins ago",
             votes: 31,
+            isResolved: false,
           },
         ],
       },
@@ -41,6 +44,7 @@ const PLACEHOLDER_COMMENTS: Comment[] = [
     content: "If recursion is so powerful, why does my stack overflow every time I try it?",
     timestamp: "1 hour ago",
     votes: 73,
+    isResolved: false,
   },
 ];
 

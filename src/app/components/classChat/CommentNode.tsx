@@ -1,17 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
-import { Eye, EyeClosed } from "lucide-react";
+import React, { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowBigUp, MessageCircle } from "lucide-react";
 import Comment from "@/utils/types";
-import PLACEHOLDER_COMMENTS from "@/utils/placeholder";
-import { Field, FieldLabel, FieldSet } from "@/components/ui/field";
-import useShowSlide from "./room";
 
 function renderAvatar(comment: Comment) {
   if (comment) {
@@ -23,6 +17,7 @@ function renderAvatar(comment: Comment) {
     );
   }
 }
+
 function renderUpvote(comment: Comment) {
   return (
     <div className="flex items-center gap-1 bg-muted/50 rounded-full px-2 py-0.5">
@@ -33,6 +28,7 @@ function renderUpvote(comment: Comment) {
     </div>
   );
 }
+
 function renderReplyButton(
   isReplying: boolean,
   setIsReplying: React.Dispatch<React.SetStateAction<boolean>>
@@ -49,6 +45,7 @@ function renderReplyButton(
     </Button>
   );
 }
+
 function renderReplySection(setIsReplying: React.Dispatch<React.SetStateAction<boolean>>) {
   return (
     <div className="mt-2 pl-2 border-l-2 border-muted">
@@ -64,7 +61,8 @@ function renderReplySection(setIsReplying: React.Dispatch<React.SetStateAction<b
     </div>
   );
 }
-function CommentNode({
+
+export default function CommentNode({
   comment,
   isRoot = false,
   commentView,
@@ -100,13 +98,12 @@ function CommentNode({
           <label
             className="flex items-center gap-1 text-xs cursor-pointer"
             onClick={() => {
-              comment.isResolved = !comment.isResolved;
-              setResolved(comment.isResolved);
+              setResolved((prev) => !prev);
             }}
           >
             <input type="checkbox" className="hidden peer" />
             <span className="text-red-500 peer-checked:text-green-500">
-              {comment.isResolved ? "Resolved" : "Unresolved"}
+              {resolved ? "Resolved" : "Unresolved"}
             </span>
           </label>
           {renderReplyButton(isReplying, setIsReplying)}
@@ -133,75 +130,4 @@ function CommentNode({
     return render;
   }
   return null;
-}
-
-export default function ClassChat() {
-  const [commentView, setCommentView] = useState<"all" | "unresolved" | "resolved">("all");
-
-  return (
-    <div className="flex flex-col h-full bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b px-6 py-4 flex items-center justify-between sticky top-0 bg-background z-10">
-        <h1 className="text-xl font-bold">CSC209 Class Discussion</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">342 Online</span>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>M</AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
-
-      <header className="border-b px-6 py-4 flex items-center justify-left sticky top-0 bg-background gap-2 z-10">
-        {useShowSlide() && (
-          <Eye
-            className="w-5 h-5 cursor-pointer text-foreground hover:text-primary"
-            onClick={() => {}}
-          />
-        )}
-        {!useShowSlide() && (
-          <EyeClosed
-            className="w-5 h-5 cursor-pointer text-foreground hover:text-primary"
-            onClick={() => {}}
-          />
-        )}
-
-        <FieldSet>
-          <RadioGroup defaultValue="all" className="flex gap-2">
-            <Field orientation="horizontal">
-              <FieldLabel onClick={() => setCommentView("all")}>All</FieldLabel>
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel onClick={() => setCommentView("unresolved")}>Unresolved</FieldLabel>
-            </Field>
-            <Field orientation="horizontal">
-              <FieldLabel onClick={() => setCommentView("resolved")}>Resolved</FieldLabel>
-            </Field>
-          </RadioGroup>
-        </FieldSet>
-
-        <Input className="h-10 " placeholder="Search comments..." />
-      </header>
-
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="space-y-6">
-            {PLACEHOLDER_COMMENTS.map((comment) => (
-              <CommentNode key={comment.id} comment={comment} commentView={commentView} isRoot />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Comment Input */}
-      <div className="border-t bg-background p-4 relative z-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-4">
-            <Textarea placeholder="Add to the discussion..." className="min-h-[60px]" />
-            <Button className="h-10 bg-foreground ">Post</Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
