@@ -13,7 +13,7 @@ export default function Room() {
           <SlideViewer />
         </ResizablePanel>
         <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={25} minSize={0}>
+        <ResizablePanel defaultSize={30} minSize={30}>
           <ClassChat />
         </ResizablePanel>
       </ResizablePanelGroup>

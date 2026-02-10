@@ -12,7 +12,6 @@ import {
 import { RenderLayer, RenderPluginPackage } from "@embedpdf/plugin-render/react";
 import { ViewportPluginPackage } from "@embedpdf/plugin-viewport/react";
 import { useState } from "react";
-import useShowSlide from "./room";
 
 const plugins = [
   createPluginRegistration(DocumentManagerPluginPackage, {
@@ -142,7 +141,7 @@ export default function SlideViewer() {
   }
 
   return (
-    <div className="flex flex-col bg-stone-100 flex-1 w-full h-full items-center justify-center overflow-hidden">
+    <div className="flex flex-col bg-stone-50 flex-1 w-full h-full items-center justify-center overflow-hidden">
       <EmbedPDF engine={engine} plugins={plugins}>
         {({ activeDocumentId }) => <SlideUI activeDocumentId={activeDocumentId} />}
       </EmbedPDF>
