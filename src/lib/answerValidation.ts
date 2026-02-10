@@ -7,7 +7,7 @@ import { answerRateLimit } from "@/lib/redisKeys";
 // ---------------------------------------------------------------------------
 
 export const ANSWER_MIN_LENGTH = 1;
-export const ANSWER_MAX_LENGTH = 2000;
+export const ANSWER_MAX_LENGTH = 1000;
 export const RATE_LIMIT_COUNT = 15;
 export const RATE_LIMIT_WINDOW_SECONDS = 60;
 

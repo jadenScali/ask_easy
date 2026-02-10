@@ -91,13 +91,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Creates a new answer for the given question.
  *
  * Request body:
- *   - content: string (required, 1-2000 characters)
+ *   - content: string (required, 1-1000 characters)
  *   - authorId: string (required)
  *
  * Validations:
- *   1. Content length bounds
- *   2. Rate limit (15 answers per 60 seconds per user)
- *   3. Question exists and belongs to an active session
+ *   1. Author ID provided
+ *   2. Question exists and belongs to an active session
+ *   3. Content length bounds
+ *   4. Rate limit (15 answers per 60 seconds per user)
+ *
+ * Note: Question validation before rate limit prevents exhausting rate limit
+ * quota on invalid requests (e.g., non-existent questions).
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
@@ -118,26 +122,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Author ID is required." }, { status: 400 });
     }
 
-    // 2. Validate content using shared validation
+    // 2. Validate question — check early to avoid exhausting rate limit on invalid questions
+    const questionValidation = await validateQuestionForAnswers(questionId);
+    if (!questionValidation.valid) {
+      const statusCode = questionValidation.error === "Question not found." ? 404 : 403;
+      return NextResponse.json({ error: questionValidation.error }, { status: statusCode });
+    }
+
+    // 3. Validate content using shared validation
     const contentValidation = validateAnswerContent(body.content);
     if (!contentValidation.valid) {
       return NextResponse.json({ error: contentValidation.error }, { status: 400 });
     }
 
-    // 3. Check rate limit using shared validation
+    // 4. Check rate limit — only increment after validating question exists
     const isRateLimited = await checkAnswerRateLimit(body.authorId);
     if (isRateLimited) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please wait before submitting another answer." },
         { status: 429 }
       );
-    }
-
-    // 4. Validate question using shared validation
-    const questionValidation = await validateQuestionForAnswers(questionId);
-    if (!questionValidation.valid) {
-      const statusCode = questionValidation.error === "Question not found." ? 404 : 403;
-      return NextResponse.json({ error: questionValidation.error }, { status: statusCode });
     }
 
     // 5. Create the answer
