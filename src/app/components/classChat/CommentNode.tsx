@@ -140,11 +140,11 @@ export default function CommentNode({ post, commentView }: { post: Post; comment
       </div>
 
       <div className="flex-1 min-w-0 space-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs  text-stone-900/50">
           <span className="font-semibold text-foreground">{post.user}</span>
           <span>{post.timestamp}</span>
           {post.type === "answer" && post.isMainAnswer && (
-            <span className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-green-200">
+            <span className="bg-green-100 text-green-800 text-[10px] px-2 py-1 rounded-md font-medium">
               Best Answer
             </span>
           )}
@@ -152,9 +152,7 @@ export default function CommentNode({ post, commentView }: { post: Post; comment
 
         <div
           className={`text-sm break-words whitespace-pre-wrap ${
-            post.type === "answer" && post.isMainAnswer
-              ? "p-3 bg-green-50/50 rounded-md border border-green-100 mt-1"
-              : ""
+            post.type === "answer" && post.isMainAnswer ? "p-3 bg-green-100 rounded-md" : ""
           }`}
         >
           {post.content}
