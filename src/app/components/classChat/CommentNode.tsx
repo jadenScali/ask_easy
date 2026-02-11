@@ -18,16 +18,30 @@ function renderAvatar(post: Post) {
   }
 }
 
-function renderUpvote(post: Post) {
-  const votes = Math.max(0, post.votes);
+function UpvoteButton({ initialVotes }: { initialVotes: number }) {
+  const [votes, setVotes] = useState(initialVotes);
+  const [isUpvoted, setIsUpvoted] = useState(false);
+
+  const handleUpvote = () => {
+    if (isUpvoted) {
+      setVotes(votes - 1);
+    } else {
+      setVotes(votes + 1);
+    }
+    setIsUpvoted(!isUpvoted);
+  };
+
   return (
     <Button
       variant="ghost"
       size="sm"
-      className="h-8 px-2 text-xs gap-2 text-stone-900/50 hover:text-stone-900 hover:bg-stone-200/50"
+      className={`h-8 px-2 text-xs gap-2 hover:bg-stone-200/50 ${
+        isUpvoted ? "text-green-500 hover:text-green-500" : "text-stone-900/50 hover:text-stone-900"
+      }`}
+      onClick={handleUpvote}
     >
-      <ArrowBigUp className="h-4 w-4" />
-      <span>{votes}</span>
+      <ArrowBigUp className={`h-4 w-4 ${isUpvoted ? "fill-current" : ""}`} />
+      <span>{Math.max(0, votes)}</span>
     </Button>
   );
 }
@@ -91,7 +105,7 @@ export default function CommentNode({ post, commentView }: { post: Post; comment
             <span>{question.timestamp}</span>
           </div>
           <div className="flex items-center gap-2">
-            {renderUpvote(question)}
+            <UpvoteButton initialVotes={question.votes} />
             {renderReplyButton(isReplying, setIsReplying)}
           </div>
         </div>
@@ -131,7 +145,7 @@ export default function CommentNode({ post, commentView }: { post: Post; comment
           <span>{post.timestamp}</span>
           {post.type === "answer" && post.isMainAnswer && (
             <span className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0.5 rounded-full font-medium border border-green-200">
-              Main Answer
+              Best Answer
             </span>
           )}
         </div>
@@ -146,7 +160,9 @@ export default function CommentNode({ post, commentView }: { post: Post; comment
           {post.content}
         </div>
 
-        <div className="flex items-center gap-4 text-muted-foreground">{renderUpvote(post)}</div>
+        <div className="flex items-center gap-4 text-muted-foreground">
+          <UpvoteButton initialVotes={post.votes} />
+        </div>
       </div>
     </div>
   );
