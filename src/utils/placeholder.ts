@@ -6,8 +6,7 @@ const PLACEHOLDER_POSTS: Post[] = [
     id: 1,
     type: "question",
     user: {
-      username:
-        "Hairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy Potter",
+      username: "Hairy PotterHairy",
       pfp: "",
       role: "student",
     },
@@ -61,7 +60,7 @@ const PLACEHOLDER_POSTS: Post[] = [
     id: 5,
     type: "question",
     user: {
-      username: "Lily Thompson",
+      username: "Lily Thompson James Arron Jack Jesse James North East West South",
       pfp: "",
       role: "student",
     },
@@ -76,7 +75,7 @@ const PLACEHOLDER_POSTS: Post[] = [
         user: {
           username: "Jesse Retger",
           pfp: "",
-          role: "prof",
+          role: "student",
         },
         timestamp: "11:24",
         content: "I think they're the same thing?",
