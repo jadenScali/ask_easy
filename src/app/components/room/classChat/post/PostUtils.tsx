@@ -53,6 +53,15 @@ export function renderRoleIcon(user: User) {
   return null;
 }
 
+export function renderUsername(user: User) {
+  return (
+    <span className="font-semibold flex flex-row items-center gap-1 text-foreground">
+      {renderRoleIcon(user)}
+      <span className="line-clamp-2">{user.username}</span>
+    </span>
+  );
+}
+
 export const bestToTop = (replies: Post[] | undefined) => {
   if (!replies) return [];
 
