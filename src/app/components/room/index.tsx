@@ -9,7 +9,7 @@ export default function Room() {
   return (
     <div className="h-screen w-full bg-background font-sans">
       <ResizablePanelGroup direction={isMdSize ? "horizontal" : "vertical"}>
-        <ResizablePanel defaultSize={75} minSize={0}>
+        <ResizablePanel defaultSize={70} minSize={0}>
           <SlideViewer />
         </ResizablePanel>
         <ResizableHandle withHandle />
