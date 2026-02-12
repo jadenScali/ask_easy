@@ -18,3 +18,35 @@ export function session(sessionId: string): string {
 export function rateLimit(key: string): string {
   return `ratelimit:{${key}}`;
 }
+
+/**
+ * Question rate-limit key (passed into checkRateLimit, which wraps it via rateLimit()).
+ * Final Redis key: "ratelimit:{question:abc123}"
+ */
+export function questionRateLimit(userId: string): string {
+  return `question:${userId}`;
+}
+
+/**
+ * Answer rate-limit key (passed into checkRateLimit, which wraps it via rateLimit()).
+ * Final Redis key: "ratelimit:{answer:abc123}"
+ */
+export function answerRateLimit(userId: string): string {
+  return `answer:${userId}`;
+}
+
+/**
+ * Upvote rate-limit key (passed into checkRateLimit, which wraps it via rateLimit()).
+ * Final Redis key: "ratelimit:{upvote:abc123}"
+ */
+export function upvoteRateLimit(userId: string): string {
+  return `upvote:${userId}`;
+}
+
+/**
+ * Resolve rate-limit key (passed into checkRateLimit, which wraps it via rateLimit()).
+ * Final Redis key: "ratelimit:{resolve:abc123}"
+ */
+export function resolveRateLimit(userId: string): string {
+  return `resolve:${userId}`;
+}
