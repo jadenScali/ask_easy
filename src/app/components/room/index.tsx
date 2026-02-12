@@ -4,7 +4,7 @@ import SlideViewer from "./slideViewer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { createContext, useState } from "react";
 
-export const SlideUpdateContext = createContext({ isHidden: false, rerender: () => {} });
+export const SlideUpdateContext = createContext({ isSlidesVisible: true, rerender: () => {} });
 
 function chatPanel(isMdSize: boolean) {
   return (
@@ -46,16 +46,16 @@ function chatAndSlidePanel(
 
 export default function Room() {
   const isMdSize = useMediaQuery("(min-width: 1024px)");
-  const [isHidden, setIsHidden] = useState(false);
+  const [isSlidesVisible, setIsSlidesVisible] = useState(true);
   const [resizableWidth, setResizableWidth] = useState(30);
 
   function rerender() {
-    setIsHidden((prev) => !prev);
+    setIsSlidesVisible((prev) => !prev);
   }
   return (
     <div className="h-screen w-full bg-background font-sans">
-      <SlideUpdateContext.Provider value={{ isHidden, rerender }}>
-        {isHidden
+      <SlideUpdateContext.Provider value={{ isSlidesVisible, rerender }}>
+        {isSlidesVisible
           ? chatAndSlidePanel(isMdSize, resizableWidth, setResizableWidth)
           : chatPanel(isMdSize)}
       </SlideUpdateContext.Provider>
