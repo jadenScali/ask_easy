@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+.pnpm-store
 /.pnp
 .pnp.*
 .pnpm-store/
@@ -42,4 +43,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/src/generated/prisma
+
+.claude/
+
+/src/generated
