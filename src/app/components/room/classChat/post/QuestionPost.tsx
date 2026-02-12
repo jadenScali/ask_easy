@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle } from "lucide-react";
 import { Question, Post } from "@/utils/types";
-import { UpvoteButton, renderRoleIcon, ShowMoreLess } from "./PostUtils";
+import { UpvoteButton, ShowMoreLess, renderUsername } from "./PostUtils";
 
 function renderReplyButton(
   isReplying: boolean,
@@ -71,11 +71,10 @@ export default function QuestionPost({
 
       <div className="flex items-center justify-between text-xs text-stone-900/50">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${resolved ? "bg-green-500" : "bg-red-500"}`} />
-          <span className="font-semibold flex flex-row gap-1 text-foreground">
-            {renderRoleIcon(post.user)}
-            {post.user.username}
-          </span>
+          <div
+            className={`w-2 h-2 rounded-full shrink-0 ${resolved ? "bg-green-500" : "bg-red-500"}`}
+          />
+          {renderUsername(post.user)}
           <span>{post.timestamp}</span>
         </div>
         <div className="flex items-center gap-2">

@@ -6,7 +6,8 @@ const PLACEHOLDER_POSTS: Post[] = [
     id: 1,
     type: "question",
     user: {
-      username: "Hairy Potter",
+      username:
+        "Hairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy PotterHairy Potter",
       pfp: "",
       role: "student",
     },
