@@ -29,6 +29,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { sessionId, slideSetId } = await params;
 
+    // TODO: Add in real authentication once UofT auth is added
+
     // 1. Validate session exists
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
