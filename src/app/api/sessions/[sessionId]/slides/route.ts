@@ -111,6 +111,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { sessionId } = await params;
 
+    // TODO: Add in real authentication for profs once UofT auth is added
+
     // Parse multipart form data
     let formData: FormData;
     try {
