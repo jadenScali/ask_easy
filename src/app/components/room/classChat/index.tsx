@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import PLACEHOLDER_POSTS from "@/utils/placeholder";
+import { PLACEHOLDER_POSTS } from "@/utils/placeholder";
 import PostItem from "./post";
 import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
