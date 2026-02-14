@@ -5,6 +5,8 @@ export type Role = "ta" | "prof" | "student";
 export interface User {
   username: string;
   pfp: string;
+  courses?: string[];
+  courseids?: number[];
   role: Role;
 }
 
@@ -31,3 +33,11 @@ export interface Comment extends BasePost {
 }
 
 export type Post = Question | BestAnswer | Comment;
+
+export type Course = {
+  professor: string;
+  beginDate: string;
+  endDate: string;
+  name: string;
+  id: number;
+};
