@@ -67,8 +67,7 @@ function renderCourseButtons() {
 
 export default function LandingPage() {
   return (
-    <div className="h-screen flex flex-col overflow-hidden dot-grid">
-      {/* Fixed Header */}
+    <div className="  max-h-screen overlow-y-auto flex flex-col dot-grid relative">
       <h1
         className="absolute items-center justify-between shadow-md top-6
      left-7 right-7 z-[5] bg-white rounded-lg 
@@ -86,30 +85,27 @@ export default function LandingPage() {
           </button>
         </div>
       </h1>
-
-      {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto pt-32 pb-10">
-        <div className="container mx-auto px-4">
+      <div className="overflow-y-auto">
+        <div className="flex-1 p-5 pt-32 items-center justify-center pb-10">
           <h1 className="text-4xl py-4 text-center">Classrooms</h1>
           {renderCourseButtons()}
         </div>
+
+        <footer className="text-white flex-shrink-0">
+          <div className="py-8 gap-5 bg-black grid md:grid-cols-2 gap-8 items-center border-blue-50">
+            <div className="text-left mx-auto">
+              <h1 className="font-bold py-1 text-xl">Contact Us:</h1>
+              <p>support@askeasy.com</p>
+            </div>
+
+            <div className="text-left mx-auto">
+              <h1 className="font-bold py-1 text-xl">Support:</h1>
+              <p>For Professors</p>
+              <p>For Students</p>
+            </div>
+          </div>
+        </footer>
       </div>
-
-      {/* Footer */}
-      <footer className="text-white flex-shrink-0">
-        <div className="py-8 gap-5 bg-black grid md:grid-cols-2 gap-8 items-center border-blue-50">
-          <div className="text-left mx-auto">
-            <h1 className="font-bold py-1 text-xl">Contact Us:</h1>
-            <p>support@askeasy.com</p>
-          </div>
-
-          <div className="text-left mx-auto">
-            <h1 className="font-bold py-1 text-xl">Support:</h1>
-            <p>For Professors</p>
-            <p>For Students</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
