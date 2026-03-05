@@ -63,17 +63,17 @@ export default function LandingPage() {
     <div className="overflow-x-hidden dot-grid min-h-[100dvh] flex flex-col w-full relative">
       <div
         className="absolute items-center justify-between shadow-md top-6
-     left-7 right-7 z-[5] bg-white rounded-lg 
-     text-2xl font-bold text-left py-2 px-3 flex 
-     border-3 border-blue-50"
+     left-7 right-7 z-[5] bg-stone-100 rounded-lg 
+     text-2xl font-bold text-stone-900 text-left py-2 px-3 flex 
+     backdrop-blur-md"
       >
         <span className="text-lg font-bold px-2">AskEasy</span>
 
         <div className="space-x-3">
-          <button className="px-2 rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-stone-100 transition">
+          <button className="rounded-lg bg-stone-200 hover:bg-stone-300 px-4 py-2 text-sm font-medium text-stone-900 transition-colors">
             Create a Class
           </button>
-          <button className="rounded-lg border border-stone-300 px-4 py-2 text-sm font-medium hover:bg-stone-100 transition">
+          <button className="rounded-lg bg-stone-200 hover:bg-stone-300 px-4 py-2 text-sm font-medium text-stone-900 transition-colors">
             Qr Code login
           </button>
         </div>
@@ -84,7 +84,7 @@ export default function LandingPage() {
         <div className="flex-1 px-4 py-4">{renderCourseButtons()}</div>
       </div>
 
-      <footer className="w-full bg-stone-100 text-stone-600 border-t border-stone-300 z-10 relative">
+      <footer className="w-full bg-stone-100 text-stone-600 rounded-t-lg z-10 relative">
         <div className="max-w-6xl mx-auto px-6 py-12 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 w-full">
             <div className="flex flex-col items-center md:items-start space-y-4">
