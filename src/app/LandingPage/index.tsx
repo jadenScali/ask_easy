@@ -64,7 +64,7 @@ function renderCourseButtons() {
 
 export default function LandingPage() {
   return (
-    <div className="overflow-y-auto dot-grid min-h-screen flex flex-col">
+    <div className="overflow-x-hidden dot-grid min-h-[100dvh] flex flex-col w-full relative">
       <h1
         className="absolute items-center justify-between shadow-md top-6
      left-7 right-7 z-[5] bg-white rounded-lg 
@@ -88,17 +88,51 @@ export default function LandingPage() {
         <div className="flex-1 px-4 py-4">{renderCourseButtons()}</div>
       </div>
 
-      <footer className=" flex text-white justify-center">
-        <div className=" flex-1 py-8 gap-5 flex bg-black grid md:grid-cols-2 gap-8 items-center border-blue-50">
-          <div className="text-left mx-auto ">
-            <h1 className="font-bold py-1 text-xl">Contact Us:</h1>
-            <p>support@askeasy.com</p>
+      <footer className="w-full bg-slate-950 text-slate-300 border-t border-slate-800 z-10 relative">
+        <div className="max-w-6xl mx-auto px-6 py-12 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 w-full">
+            <div className="flex flex-col items-center md:items-start space-y-4">
+              <h2 className="text-lg font-semibold text-white tracking-wide uppercase">
+                Contact Us
+              </h2>
+              <a
+                href="mailto:support@askeasy.com"
+                className="hover:text-blue-400 transition-colors duration-200 flex items-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                [EMAIL_ADDRESS]
+              </a>
+            </div>
+
+            <div className="flex flex-col items-center md:items-start space-y-4">
+              <h2 className="text-lg font-semibold text-white tracking-wide uppercase">Support</h2>
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-6">
+                <a href="#" className="hover:text-blue-400 transition-colors duration-200">
+                  For Professors
+                </a>
+                <span className="text-slate-700 hidden md:inline">•</span>
+                <a href="#" className="hover:text-blue-400 transition-colors duration-200">
+                  For Students
+                </a>
+              </div>
+            </div>
           </div>
 
-          <div className="text-left mx-auto">
-            <h1 className="font-bold py-1 text-xl">Support:</h1>
-            <p>For Professors</p>
-            <p>For Students</p>
+          <div className="mt-12 pt-8 border-t border-slate-800/50 flex flex-col md:flex-row items-center justify-between text-sm text-slate-500 w-full gap-4">
+            <p>© {new Date().getFullYear()} AskEasy. All rights reserved.</p>
+            <div className="flex flex-wrap justify-center space-x-4"></div>
           </div>
         </div>
       </footer>
