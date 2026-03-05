@@ -84,16 +84,16 @@ export default function LandingPage() {
         <div className="flex-1 px-4 py-4">{renderCourseButtons()}</div>
       </div>
 
-      <footer className="w-full bg-slate-950 text-slate-300 border-t border-slate-800 z-10 relative">
+      <footer className="w-full bg-stone-100 text-stone-600 border-t border-stone-300 z-10 relative">
         <div className="max-w-6xl mx-auto px-6 py-12 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 w-full">
             <div className="flex flex-col items-center md:items-start space-y-4">
-              <h2 className="text-lg font-semibold text-white tracking-wide uppercase">
+              <h2 className="text-lg font-semibold text-stone-900 tracking-wide uppercase">
                 Contact Us
               </h2>
               <a
                 href="mailto:[EMAIL_ADDRESS]"
-                className="hover:text-blue-400 transition-colors duration-200 flex items-center gap-2"
+                className="hover:text-stone-900 transition-colors duration-200 flex items-center gap-2"
               >
                 <svg
                   className="w-5 h-5 flex-shrink-0"
@@ -113,20 +113,22 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col items-center md:items-start space-y-4">
-              <h2 className="text-lg font-semibold text-white tracking-wide uppercase">Support</h2>
+              <h2 className="text-lg font-semibold text-stone-900 tracking-wide uppercase">
+                Support
+              </h2>
               <div className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-6">
-                <a href="#" className="hover:text-blue-400 transition-colors duration-200">
+                <a href="#" className="hover:text-stone-900 transition-colors duration-200">
                   For Professors
                 </a>
-                <span className="text-slate-700 hidden md:inline">•</span>
-                <a href="#" className="hover:text-blue-400 transition-colors duration-200">
+                <span className="text-stone-400 hidden md:inline">•</span>
+                <a href="#" className="hover:text-stone-900 transition-colors duration-200">
                   For Students
                 </a>
               </div>
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-slate-800/50 flex flex-col md:flex-row items-center justify-between text-sm text-slate-500 w-full gap-4">
+          <div className="mt-12 pt-8 border-t border-stone-300/50 flex flex-col md:flex-row items-center justify-between text-sm text-stone-500 w-full gap-4">
             <p>© {new Date().getFullYear()} AskEasy. All rights reserved.</p>
             <div className="flex flex-wrap justify-center space-x-4"></div>
           </div>
