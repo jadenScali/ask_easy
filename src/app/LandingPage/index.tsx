@@ -12,49 +12,57 @@ function renderCourseButtons() {
       validcourses.push(PLACEHOLDER_COURSES[i]);
     }
   }
-  return (
-    <div
-      className="flex-1 p-4 py-10  w-full backdrop-blur-[1.5px]
+  if (validcourses.length > 0) {
+    return (
+      <div
+        className="flex-1 p-4 py-10  w-full backdrop-blur-[1.5px]
              border-4 rounded-2xl border-blue-50 bg-yellow-050"
-    >
-      <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto text-center">
-        {validcourses.map((course, index) => (
-          <Link
-            key={index}
-            href="/room"
-            className="flex flex-col items-center justify-center
+      >
+        <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto text-center">
+          {validcourses.map((course, index) => (
+            <Link
+              key={index}
+              href="/room"
+              className="flex flex-col items-center justify-center
              py-6 px-4 transition duration-300 text-center rounded-2xl
              bg-white-020 shadow-xl backdrop-blur-[1.5px] border-4 border-blue-50
               h-[15rem] group
              "
-          >
-            <div className="transition duration-300 group">
-              <h3 className="font-bold text-3xl ">
-                <span className="group-hover:bg-blue-400 group-hover:text-black transition-colors duration-300 ">
-                  {course.name}
-                </span>
-              </h3>
-              <h3>
-                <span className="group-hover:bg-blue-400  group-hover:text-black transition-colors duration-300 ">
-                  {course.professor}
-                </span>
-              </h3>
-              <h3 className="px-4">
-                <span className="group-hover:bg-blue-400 group-hover:text-black transition-colors duration-300 ">
-                  {"Begins: " + course.beginDate}
-                </span>
-              </h3>
-              <h3 className="px-4">
-                <span className="group-hover:bg-blue-400 group-hover:text-black transition-colors duration-300 ">
-                  {"Ends: " + course.endDate}
-                </span>
-              </h3>
-            </div>
-          </Link>
-        ))}
+            >
+              <div className="transition duration-300 group">
+                <h3 className="font-bold text-3xl ">
+                  <span className="group-hover:bg-blue-400 duration-300 ">{course.name}</span>
+                </h3>
+                <h3>
+                  <span className="group-hover:bg-blue-400 duration-300 ">{course.professor}</span>
+                </h3>
+                <h3 className="px-4">
+                  <span className="group-hover:bg-blue-400 duration-300 ">
+                    {"Begins: " + course.beginDate}
+                  </span>
+                </h3>
+                <h3 className="px-4">
+                  <span className="group-hover:bg-blue-400 duration-300 ">
+                    {"Ends: " + course.endDate}
+                  </span>
+                </h3>
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  } else {
+    return (
+      <div
+        className="flex-1 p-4 py-10 w-full backdrop-blur-[1.5px]
+    border-4 rounded-2xl border-blue-50 bg-yellow-050 
+    flex items-center justify-center h-120"
+      >
+        <h1 className="text-center text-2xl">No Classes Available Currently </h1>
+      </div>
+    );
+  }
 }
 
 export default function LandingPage() {
@@ -62,7 +70,7 @@ export default function LandingPage() {
     <div className="overflow-y-auto dot-grid min-h-screen flex flex-col">
       <h1
         className="absolute items-center justify-between shadow-md top-6
-     left-8 right-8 z-[5] bg-white rounded-lg 
+     left-7 right-7 z-[5] bg-white rounded-lg 
      text-2xl font-bold text-left py-2 px-3 flex 
      border-3 border-blue-50"
       >
@@ -83,8 +91,8 @@ export default function LandingPage() {
         <div className="flex-1 px-4 py-4">{renderCourseButtons()}</div>
       </div>
 
-      <footer className=" flex text-white bg-red-500 justify-center">
-        <div className=" py-8 flex bg-black grid md:grid-cols-2 gap-8 items-center border-blue-50">
+      <footer className=" flex text-white justify-center">
+        <div className=" flex-1 py-8 gap-5 flex bg-black grid md:grid-cols-2 gap-8 items-center border-blue-50">
           <div className="text-left mx-auto ">
             <h1 className="font-bold py-1 text-xl">Contact Us:</h1>
             <p>support@askeasy.com</p>
