@@ -1,5 +1,5 @@
 import { PLACEHOLDER_USERS } from "@/utils/placeholder";
-import { Course, User, Role } from "@/utils/types";
+import { Course, User } from "@/utils/types";
 import { PLACEHOLDER_COURSES } from "@/utils/placeholder";
 import Link from "next/link";
 
@@ -11,7 +11,8 @@ export default function renderCourseButtons() {
       validcourses.push(PLACEHOLDER_COURSES[i]);
     }
   }
-  if (validcourses.length > 0) {
+  const validcourses1: Course[] = [];
+  if (validcourses1.length > 0) {
     return (
       <div className="flex-1 p-4 py-10">
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto ">
@@ -47,12 +48,8 @@ export default function renderCourseButtons() {
     );
   } else {
     return (
-      <div
-        className="p-4 py-10 w-full backdrop-blur-[1.5px]
-    border-4 rounded-2xl border-blue-50 bg-yellow-050 
-    flex items-center justify-center h-120"
-      >
-        <h1 className="text-center text-2xl">No Classes Available Currently </h1>
+      <div className="p-4 py-10 w-full backdrop-blur-[1.5px] rounded-2xl flex items-center justify-center h-120">
+        <h1 className="text-center font-bold text-2xl">No Classes Available Currently </h1>
       </div>
     );
   }

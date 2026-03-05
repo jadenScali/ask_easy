@@ -1,5 +1,5 @@
 "use client";
-import { Course, User, Role } from "@/utils/types";
+import { User } from "@/utils/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import renderCourseButtons from "./CourseViewer";
 
@@ -7,7 +7,7 @@ import renderCourseButtons from "./CourseViewer";
 const placeholder_user: User = {
   username: "Hi",
   pfp: "H",
-  role: "student",
+  role: "prof",
 };
 
 export function renderAvatar(user: User) {
