@@ -11,8 +11,8 @@ export default function renderCourseButtons() {
       validcourses.push(PLACEHOLDER_COURSES[i]);
     }
   }
-  const validcourses1: Course[] = [];
-  if (validcourses1.length > 0) {
+
+  if (validcourses.length > 0) {
     return (
       <div className="flex-1 p-4 py-10">
         <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto ">
