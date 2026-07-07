@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowBigUp, GraduationCap } from "lucide-react";
-import { Post, User, getInitials, isLikelyAvatarImageUrl } from "@/utils/types";
+import { Post, Question, User, getInitials, isLikelyAvatarImageUrl } from "@/utils/types";
 
 export function renderAvatar(post: Post) {
   if (post?.user) {
@@ -95,3 +95,17 @@ export function renderUsername(user: User | null, isAnonymous?: boolean) {
 export const bestToTop = (replies: Post[] | undefined) => {
   return replies ?? [];
 };
+
+/**
+ * Strips author identity from questions and their replies so posts render
+ * exactly like anonymous ones (no name, utorid, role icon, or avatar
+ * initials). Used by the instructor's projection mode — the underlying state
+ * keeps the real authors, so flipping the toggle back restores them.
+ */
+export function stripAuthors(questions: Question[]): Question[] {
+  return questions.map((q) => ({
+    ...q,
+    user: null,
+    replies: q.replies.map((r) => ({ ...r, user: null })),
+  }));
+}

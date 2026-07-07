@@ -8,7 +8,11 @@ import PostItem from "./post";
 import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
 import FilterTabs from "./FilterTabs";
+import { stripAuthors } from "./post/PostUtils";
 import type { Question, Comment, Role } from "@/utils/types";
+
+/** localStorage key for the instructor's projection-mode (hide names) choice. */
+const PROJECTION_MODE_KEY = "room:projectionMode";
 
 // ---------------------------------------------------------------------------
 // API response types (what the REST endpoints return)
@@ -114,6 +118,15 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  // Projection mode (instructors only): hide all author identities so the
+  // screen can be safely projected. Defaults to ON (hidden) for safety; the
+  // persisted choice is loaded after mount to avoid hydration mismatches.
+  const [projectionMode, setProjectionMode] = useState(true);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(PROJECTION_MODE_KEY);
+    if (stored !== null) setProjectionMode(stored === "true");
+  }, []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   // Separate history that keeps deleted messages (marked as [deleted]) for the
@@ -483,6 +496,12 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     setAnswerMode(newMode); // Optimistic update
   };
 
+  const handleToggleProjectionMode = () => {
+    const next = !projectionMode;
+    localStorage.setItem(PROJECTION_MODE_KEY, String(next));
+    setProjectionMode(next);
+  };
+
   const handleDeleteQuestion = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:delete", { questionId, sessionId });
@@ -500,12 +519,18 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
    *       Anonymous posts are excluded because the client cannot verify the
    *       author's role, and the author could be a professor or another TA.
    * - STUDENT: never
+   *
+   * Looks the post up in the unstripped state by id, so permissions are
+   * unaffected by projection mode (which nulls `user` on rendered posts).
    */
-  function canDelete(post: { user: { id?: string; role: Role } | null }): boolean {
+  function canDelete(post: { id: string }): boolean {
     if (role === "PROFESSOR") return true;
     if (role === "TA") {
-      if (!post.user) return false; // anonymous — author role unknown, hide button
-      return post.user.role === "STUDENT" || post.user.id === userId;
+      const original =
+        questions.find((q) => q.id === post.id) ??
+        questions.flatMap((q) => q.replies).find((r) => r.id === post.id);
+      if (!original?.user) return false; // anonymous — author role unknown, hide button
+      return original.user.role === "STUDENT" || original.user.id === userId;
     }
     return false;
   }
@@ -514,8 +539,13 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   // Search filter
   // -------------------------------------------------------------------------
 
+  // In projection mode the instructor's rendered list is anonymized up front,
+  // so author names never reach the DOM and can't be matched by search either.
+  // State keeps the real authors — toggling off restores them instantly.
+  const hideIdentities = isInstructor && projectionMode;
+
   const filteredQuestions = (() => {
-    let list = questions;
+    let list = hideIdentities ? stripAuthors(questions) : questions;
 
     // Search filter
     const q = searchQuery.trim().toLowerCase();
@@ -558,6 +588,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         role={role}
         answerMode={answerMode}
         onToggleAnswerMode={handleToggleAnswerMode}
+        projectionMode={projectionMode}
+        onToggleProjectionMode={handleToggleProjectionMode}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
