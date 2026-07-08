@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Settings,
+  BarChart3,
   BookOpen,
   Calendar,
   PlusCircle,
@@ -282,13 +283,25 @@ export default function ProfCourseButtons() {
                           {isStarting ? "Starting..." : "Start Live Session"}
                         </button>
 
-                        <button
-                          onClick={(e) => handleOpenManage(e, course)}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-md transition-colors font-medium text-sm"
-                        >
-                          <Settings className="w-4 h-4" />
-                          Manage Lecture
-                        </button>
+                        <div className="flex gap-2 w-full">
+                          <button
+                            onClick={(e) => handleOpenManage(e, course)}
+                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-md transition-colors font-medium text-sm"
+                          >
+                            <Settings className="w-4 h-4" />
+                            Manage Lecture
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/courses/${course.id}/analytics`);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-md transition-colors font-medium text-sm"
+                          >
+                            <BarChart3 className="w-4 h-4" />
+                            Stats
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
