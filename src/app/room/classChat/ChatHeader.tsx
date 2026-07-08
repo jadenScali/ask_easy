@@ -2,7 +2,16 @@
 
 import { Input } from "@/components/ui/input";
 import { useContext, useState } from "react";
-import { PanelRightClose, Users, GraduationCap, Search, X, UserPlus } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  PanelRightClose,
+  Users,
+  GraduationCap,
+  Search,
+  X,
+  UserPlus,
+} from "lucide-react";
 import ManageTAsModal from "./ManageTAsModal";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { SlideUpdateContext } from "../SlideUpdateContext";
@@ -12,6 +21,8 @@ interface ChatHeaderProps {
   role: Role;
   answerMode: "all" | "instructors_only";
   onToggleAnswerMode: () => void;
+  projectionMode: boolean;
+  onToggleProjectionMode: () => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
 }
@@ -23,7 +34,7 @@ function SlideToggle() {
   if (!isMDsize) {
     return (
       <button
-        className="w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 rounded-md transition-colors"
+        className="w-9 h-9 shrink-0 flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 rounded-md transition-colors"
         onClick={() => rerender()}
       >
         {isSlidesVisible ? (
@@ -36,7 +47,7 @@ function SlideToggle() {
   }
   return (
     <button
-      className="w-9 h-9 flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 rounded-md transition-colors"
+      className="w-9 h-9 shrink-0 flex items-center justify-center text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 rounded-md transition-colors"
       onClick={() => rerender()}
     >
       {isSlidesVisible ? (
@@ -54,6 +65,8 @@ export default function ChatHeader({
   role,
   answerMode,
   onToggleAnswerMode,
+  projectionMode,
+  onToggleProjectionMode,
   searchQuery,
   onSearchChange,
 }: ChatHeaderProps) {
@@ -104,12 +117,11 @@ export default function ChatHeader({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 shrink-0 animate-in fade-in duration-200">
+              {/* min-w-0 lets the title truncate so the right-side controls never overflow */}
+              <div className="flex items-center gap-2 min-w-0 animate-in fade-in duration-200">
                 <SlideToggle />
                 {sessionTitle && (
-                  <h1 className="text-xl font-bold truncate max-w-[140px] sm:max-w-xs">
-                    {sessionTitle}
-                  </h1>
+                  <h1 className="text-xl font-bold truncate min-w-0 sm:max-w-xs">{sessionTitle}</h1>
                 )}
               </div>
 
@@ -128,6 +140,26 @@ export default function ChatHeader({
                     <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-green-500" />
                   )}
                 </button>
+
+                {/* Projection mode (hide names) toggle — instructors only */}
+                {(role === "PROFESSOR" || role === "TA") && (
+                  <button
+                    onClick={onToggleProjectionMode}
+                    aria-label="Toggle name visibility"
+                    title={
+                      projectionMode
+                        ? "Names hidden (safe to project) — click to show names"
+                        : "Names visible — click to hide names for projecting"
+                    }
+                    className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors shrink-0 cursor-pointer ${
+                      projectionMode
+                        ? "bg-stone-800 text-stone-50 hover:bg-stone-700"
+                        : "bg-stone-200 text-stone-600 hover:bg-stone-300"
+                    }`}
+                  >
+                    {projectionMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                )}
 
                 {/* Answer mode toggle — professors only */}
                 {role === "PROFESSOR" && (
