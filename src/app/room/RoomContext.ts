@@ -9,6 +9,11 @@ export interface SlideContextSnapshot {
   slideSetId: string | null;
 }
 
+export interface SlideNavigationTarget {
+  slidePageIndex: number;
+  slideSetId: string;
+}
+
 export interface RoomContextValue {
   socket: Socket<ServerToClientEvents, ClientToServerEvents> | null;
   sessionId: string;
@@ -16,6 +21,12 @@ export interface RoomContextValue {
   role: Role;
   sessionTitle: string;
   slideContextRef: MutableRefObject<SlideContextSnapshot>;
+  /** Slide the user was on before jumping via a question badge, if any. */
+  slideReturnTarget: SlideContextSnapshot | null;
+  /** Navigate the slide viewer to a question's slide context. */
+  navigateToQuestionSlide: (target: SlideNavigationTarget) => void;
+  /** Return to the slide position saved before the last question-badge jump. */
+  goBackToPreviousSlide: () => void;
 }
 
 const defaultSlideContextRef: MutableRefObject<SlideContextSnapshot> = {
@@ -29,6 +40,9 @@ export const RoomContext = createContext<RoomContextValue>({
   role: "STUDENT",
   sessionTitle: "",
   slideContextRef: defaultSlideContextRef,
+  slideReturnTarget: null,
+  navigateToQuestionSlide: () => {},
+  goBackToPreviousSlide: () => {},
 });
 
 export function useRoom() {

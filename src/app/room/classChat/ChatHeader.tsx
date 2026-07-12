@@ -2,10 +2,11 @@
 
 import { Input } from "@/components/ui/input";
 import { useContext, useState } from "react";
-import { PanelRightClose, Users, GraduationCap, Search, X, UserPlus } from "lucide-react";
+import { PanelRightClose, Users, GraduationCap, Search, X, UserPlus, Undo2 } from "lucide-react";
 import ManageTAsModal from "./ManageTAsModal";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { SlideUpdateContext } from "../SlideUpdateContext";
+import { useRoom } from "../RoomContext";
 import type { Role } from "@/utils/types";
 
 interface ChatHeaderProps {
@@ -48,8 +49,6 @@ function SlideToggle() {
   );
 }
 
-import { useRoom } from "../RoomContext";
-
 export default function ChatHeader({
   role,
   answerMode,
@@ -57,7 +56,8 @@ export default function ChatHeader({
   searchQuery,
   onSearchChange,
 }: ChatHeaderProps) {
-  const { sessionTitle } = useRoom();
+  const { sessionTitle, slideReturnTarget, goBackToPreviousSlide } = useRoom();
+  const { isSlidesVisible } = useContext(SlideUpdateContext);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showTAModal, setShowTAModal] = useState(false);
 
@@ -106,6 +106,15 @@ export default function ChatHeader({
             <>
               <div className="flex items-center gap-2 shrink-0 animate-in fade-in duration-200">
                 <SlideToggle />
+                {slideReturnTarget?.slidePageIndex != null && !isSlidesVisible && (
+                  <button
+                    onClick={goBackToPreviousSlide}
+                    className="flex items-center gap-1.5 h-9 px-3 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md text-sm font-medium transition-colors shrink-0"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                    Back to slide {slideReturnTarget.slidePageIndex + 1}
+                  </button>
+                )}
                 {sessionTitle && (
                   <h1 className="text-xl font-bold truncate max-w-[140px] sm:max-w-xs">
                     {sessionTitle}

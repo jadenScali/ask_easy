@@ -11,7 +11,7 @@ import ClassChat from "./classChat";
 import SlideViewer from "./slideViewer";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/socket/types";
 import type { Question, Role } from "@/utils/types";
-import { RoomContext, type SlideContextSnapshot } from "./RoomContext";
+import { RoomContext, type SlideContextSnapshot, type SlideNavigationTarget } from "./RoomContext";
 import { SlideUpdateContext } from "./SlideUpdateContext";
 
 // ---------------------------------------------------------------------------
@@ -147,6 +147,40 @@ function RoomInner() {
   const handleSlideContextChange = useCallback((ctx: SlideContextSnapshot) => {
     slideContextRef.current = ctx;
   }, []);
+
+  const [slideReturnTarget, setSlideReturnTarget] = useState<SlideContextSnapshot | null>(null);
+  const [slideNavTarget, setSlideNavTarget] = useState<SlideContextSnapshot | null>(null);
+
+  const navigateToQuestionSlide = useCallback(
+    (target: SlideNavigationTarget) => {
+      const current = slideContextRef.current;
+      const isDifferent =
+        current.slidePageIndex !== target.slidePageIndex ||
+        current.slideSetId !== target.slideSetId;
+
+      if (
+        isDifferent &&
+        current.slidePageIndex !== null &&
+        current.slideSetId !== null &&
+        slideReturnTarget === null
+      ) {
+        setSlideReturnTarget({ ...current });
+      }
+
+      setIsSlidesVisible(true);
+      setSlideNavTarget({
+        slidePageIndex: target.slidePageIndex,
+        slideSetId: target.slideSetId,
+      });
+    },
+    [slideReturnTarget]
+  );
+
+  const goBackToPreviousSlide = useCallback(() => {
+    if (slideReturnTarget?.slidePageIndex == null || !slideReturnTarget?.slideSetId) return;
+    setSlideNavTarget({ ...slideReturnTarget });
+    setSlideReturnTarget(null);
+  }, [slideReturnTarget]);
 
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(
     null
@@ -304,7 +338,17 @@ function RoomInner() {
 
   return (
     <RoomContext.Provider
-      value={{ socket, sessionId, userId, role, sessionTitle, slideContextRef }}
+      value={{
+        socket,
+        sessionId,
+        userId,
+        role,
+        sessionTitle,
+        slideContextRef,
+        slideReturnTarget,
+        navigateToQuestionSlide,
+        goBackToPreviousSlide,
+      }}
     >
       <div className="relative h-screen w-full bg-background font-sans">
         <SlideUpdateContext.Provider value={{ isSlidesVisible, rerender }}>
@@ -320,6 +364,7 @@ function RoomInner() {
                     isProfessor={isProfessor}
                     onEndLecture={isProfessor ? () => setShowEndModal(true) : undefined}
                     onSlideContextChange={handleSlideContextChange}
+                    slideNavTarget={slideNavTarget}
                   />
                 </ResizablePanel>
                 <ResizableHandle withHandle />
