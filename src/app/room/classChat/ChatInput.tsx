@@ -118,9 +118,7 @@ export default function ChatInput({
                     }
                   >
                     <Presentation className="w-4 h-4" />
-                    {includeSlideContext
-                      ? `Slide ${slideContext.slidePageIndex! + 1}`
-                      : "No slide"}
+                    {includeSlideContext ? `Slide ${slideContext.slidePageIndex! + 1}` : "No slide"}
                   </button>
                 )}
                 {error && <p className="text-xs text-red-500">{error}</p>}

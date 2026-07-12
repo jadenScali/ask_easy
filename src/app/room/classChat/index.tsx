@@ -465,11 +465,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       slideSetId?: string;
     } = { sessionId, content, isAnonymous };
 
-    if (
-      attachSlideContext &&
-      slidePageIndex !== null &&
-      slideSetId !== null
-    ) {
+    if (attachSlideContext && slidePageIndex !== null && slideSetId !== null) {
       payload.slidePageIndex = slidePageIndex;
       payload.slideSetId = slideSetId;
     }

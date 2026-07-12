@@ -151,12 +151,18 @@ function SlideUI({
   // Navigation helpers
   // -------------------------------------------------------------------------
 
-  const navigateToLocal = (newIndex: number) => {
-    if (pageCount === 0) return;
-    const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
-    setPageIndex(clamped);
-    setInputValue(String(clamped + 1));
-  };
+  const navigateToLocal = useCallback(
+    (newIndex: number, options?: { detachFromProfessor?: boolean }) => {
+      if (pageCount === 0) return;
+      const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
+      if (options?.detachFromProfessor && !isProfessor && isSynced) {
+        setIsSynced(false);
+      }
+      setPageIndex(clamped);
+      setInputValue(String(clamped + 1));
+    },
+    [pageCount, isProfessor, isSynced]
+  );
 
   const navigateTo = (newIndex: number) => {
     if (pageCount === 0) return;
@@ -174,11 +180,11 @@ function SlideUI({
     if (slideNavTarget.slideSetId !== slideSetId) return;
     if (pageCount === 0) return;
 
-    if (!isProfessor && isSynced) {
-      setIsSynced(false);
-    }
-    navigateToLocal(slideNavTarget.slidePageIndex);
-  }, [slideNavTarget, slideSetId, pageCount, isProfessor, isSynced]);
+    const targetPage = slideNavTarget.slidePageIndex;
+    queueMicrotask(() => {
+      navigateToLocal(targetPage, { detachFromProfessor: true });
+    });
+  }, [slideNavTarget, slideSetId, pageCount, navigateToLocal]);
 
   const handleInputCommit = (value: string) => {
     const num = parseInt(value, 10);
