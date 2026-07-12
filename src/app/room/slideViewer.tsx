@@ -10,6 +10,7 @@ import {
   Upload,
   LogOut,
   Unlink,
+  Undo2,
 } from "lucide-react";
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF } from "@embedpdf/core/react";
@@ -35,6 +36,7 @@ interface SlideViewerProps {
   isProfessor: boolean;
   onEndLecture?: () => void;
   onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
+  slideNavTarget?: SlideContextSnapshot | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,6 +47,7 @@ interface SlideUIProps {
   activeDocumentId: string | null;
   isProfessor: boolean;
   slideSetId: string | null;
+  slideNavTarget?: SlideContextSnapshot | null;
   onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
   onReplaceSlides?: (file: File) => void;
   onEndLecture?: () => void;
@@ -54,11 +57,12 @@ function SlideUI({
   activeDocumentId,
   isProfessor,
   slideSetId,
+  slideNavTarget,
   onSlideContextChange,
   onReplaceSlides,
   onEndLecture,
 }: SlideUIProps) {
-  const { socket, sessionId } = useRoom();
+  const { socket, sessionId, slideReturnTarget, goBackToPreviousSlide } = useRoom();
   const router = useRouter();
 
   const [pageIndex, setPageIndex] = useState(0);
@@ -147,16 +151,34 @@ function SlideUI({
   // Navigation helpers
   // -------------------------------------------------------------------------
 
-  const navigateTo = (newIndex: number) => {
+  const navigateToLocal = (newIndex: number) => {
     if (pageCount === 0) return;
     const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
     setPageIndex(clamped);
     setInputValue(String(clamped + 1));
+  };
+
+  const navigateTo = (newIndex: number) => {
+    if (pageCount === 0) return;
+    const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
+    navigateToLocal(clamped);
 
     if (isProfessor && socket) {
       socket.emit("slide:change", { sessionId, pageIndex: clamped });
     }
   };
+
+  // Jump to a question's slide without moving the professor's live deck
+  useEffect(() => {
+    if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
+    if (slideNavTarget.slideSetId !== slideSetId) return;
+    if (pageCount === 0) return;
+
+    if (!isProfessor && isSynced) {
+      setIsSynced(false);
+    }
+    navigateToLocal(slideNavTarget.slidePageIndex);
+  }, [slideNavTarget, slideSetId, pageCount, isProfessor, isSynced]);
 
   const handleInputCommit = (value: string) => {
     const num = parseInt(value, 10);
@@ -254,6 +276,19 @@ function SlideUI({
 
       {/* Controls bar — always rendered */}
       <div className="flex shrink-0 items-center justify-center gap-3 p-4 overflow-x-auto whitespace-nowrap">
+        {slideReturnTarget?.slidePageIndex != null && (
+          <>
+            <button
+              onClick={goBackToPreviousSlide}
+              className="flex items-center gap-1.5 h-9 px-3 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md text-sm font-medium transition-colors cursor-pointer"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              Back to slide {slideReturnTarget.slidePageIndex + 1}
+            </button>
+            <div className="w-px h-6 bg-stone-200 mx-1" />
+          </>
+        )}
+
         {/* Professor: live indicator + nav */}
         {isProfessor && (
           <>
@@ -490,6 +525,7 @@ export default function SlideViewer({
   isProfessor,
   onEndLecture,
   onSlideContextChange,
+  slideNavTarget,
 }: SlideViewerProps) {
   const { engine, isLoading: engineLoading } = usePdfiumEngine();
   const { sessionId, socket } = useRoom();
@@ -560,6 +596,15 @@ export default function SlideViewer({
       onSlideContextChange?.({ slidePageIndex: null, slideSetId: null });
     }
   }, [slideUrl, onSlideContextChange]);
+
+  // Navigate to a question's slide — switch decks when needed
+  useEffect(() => {
+    if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
+
+    if (slideNavTarget.slideSetId !== activeSlideSetId) {
+      loadSlides(slideNavTarget.slideSetId);
+    }
+  }, [slideNavTarget, activeSlideSetId, loadSlides]);
 
   // -------------------------------------------------------------------------
   // Upload handler
@@ -676,6 +721,7 @@ export default function SlideViewer({
             activeDocumentId={activeDocumentId}
             isProfessor={isProfessor}
             slideSetId={activeSlideSetId}
+            slideNavTarget={slideNavTarget}
             onSlideContextChange={onSlideContextChange}
             onReplaceSlides={isProfessor ? handleUpload : undefined}
             onEndLecture={isProfessor ? onEndLecture : undefined}
