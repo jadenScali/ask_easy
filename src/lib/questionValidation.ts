@@ -36,6 +36,13 @@ export interface SessionValidationResult {
   };
 }
 
+export interface SlideContextValidationResult {
+  valid: boolean;
+  error?: string;
+  slidePageIndex: number | null;
+  slideSetId: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Validation Functions
 // ---------------------------------------------------------------------------
@@ -151,4 +158,83 @@ export async function validateSessionForQuestions(
   }
 
   return { valid: true, session };
+}
+
+/**
+ * Validates optional slide context attached to a question.
+ * Both fields must be provided together or omitted entirely.
+ * When provided, slidePageIndex must be a non-negative integer within the
+ * slide set's page count, and slideSetId must belong to the session.
+ */
+export async function validateQuestionSlideContext(
+  sessionId: string,
+  slidePageIndex: unknown,
+  slideSetId: unknown
+): Promise<SlideContextValidationResult> {
+  const hasPageIndex = slidePageIndex !== undefined && slidePageIndex !== null;
+  const hasSlideSetId = slideSetId !== undefined && slideSetId !== null;
+
+  if (!hasPageIndex && !hasSlideSetId) {
+    return { valid: true, slidePageIndex: null, slideSetId: null };
+  }
+
+  if (!hasPageIndex || !hasSlideSetId) {
+    return {
+      valid: false,
+      error: "Slide context requires both slidePageIndex and slideSetId.",
+      slidePageIndex: null,
+      slideSetId: null,
+    };
+  }
+
+  if (
+    typeof slidePageIndex !== "number" ||
+    !Number.isInteger(slidePageIndex) ||
+    slidePageIndex < 0
+  ) {
+    return {
+      valid: false,
+      error: "slidePageIndex must be a non-negative integer.",
+      slidePageIndex: null,
+      slideSetId: null,
+    };
+  }
+
+  if (typeof slideSetId !== "string" || slideSetId.trim() === "") {
+    return {
+      valid: false,
+      error: "slideSetId must be a non-empty string.",
+      slidePageIndex: null,
+      slideSetId: null,
+    };
+  }
+
+  const slideSet = await prisma.slideSet.findFirst({
+    where: { id: slideSetId, sessionId },
+    select: { id: true, pageCount: true },
+  });
+
+  if (!slideSet) {
+    return {
+      valid: false,
+      error: "slideSetId does not belong to this session.",
+      slidePageIndex: null,
+      slideSetId: null,
+    };
+  }
+
+  if (slidePageIndex >= slideSet.pageCount) {
+    return {
+      valid: false,
+      error: `slidePageIndex must be less than ${slideSet.pageCount}.`,
+      slidePageIndex: null,
+      slideSetId: null,
+    };
+  }
+
+  return {
+    valid: true,
+    slidePageIndex,
+    slideSetId,
+  };
 }

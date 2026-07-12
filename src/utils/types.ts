@@ -26,6 +26,8 @@ export interface Question extends BasePost {
   replies: Comment[];
   isResolved: boolean;
   visibility?: "PUBLIC" | "INSTRUCTOR_ONLY";
+  slidePageIndex?: number | null;
+  slideSetId?: string | null;
 }
 
 export interface Comment extends BasePost {

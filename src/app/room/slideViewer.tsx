@@ -25,6 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useRoom } from "./RoomContext";
+import type { SlideContextSnapshot } from "./RoomContext";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -33,6 +34,7 @@ import { useRoom } from "./RoomContext";
 interface SlideViewerProps {
   isProfessor: boolean;
   onEndLecture?: () => void;
+  onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,11 +44,20 @@ interface SlideViewerProps {
 interface SlideUIProps {
   activeDocumentId: string | null;
   isProfessor: boolean;
+  slideSetId: string | null;
+  onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
   onReplaceSlides?: (file: File) => void;
   onEndLecture?: () => void;
 }
 
-function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture }: SlideUIProps) {
+function SlideUI({
+  activeDocumentId,
+  isProfessor,
+  slideSetId,
+  onSlideContextChange,
+  onReplaceSlides,
+  onEndLecture,
+}: SlideUIProps) {
   const { socket, sessionId } = useRoom();
   const router = useRouter();
 
@@ -59,6 +70,16 @@ function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture 
   const { provides: docManager } = useDocumentManagerCapability();
   const activeDocument = docManager?.getActiveDocument();
   const pageCount = activeDocument?.pageCount || 0;
+
+  // Report the viewer's local page to the room container for question context
+  useEffect(() => {
+    if (!onSlideContextChange) return;
+    if (!slideSetId) {
+      onSlideContextChange({ slidePageIndex: null, slideSetId: null });
+      return;
+    }
+    onSlideContextChange({ slidePageIndex: pageIndex, slideSetId });
+  }, [pageIndex, slideSetId, onSlideContextChange]);
 
   // -------------------------------------------------------------------------
   // Socket — slide sync + live updates
@@ -465,11 +486,16 @@ function UploadZone({ onUpload, isUploading, uploadError, onEndLecture }: Upload
 // Public component
 // ---------------------------------------------------------------------------
 
-export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerProps) {
+export default function SlideViewer({
+  isProfessor,
+  onEndLecture,
+  onSlideContextChange,
+}: SlideViewerProps) {
   const { engine, isLoading: engineLoading } = usePdfiumEngine();
   const { sessionId, socket } = useRoom();
 
   const [slideUrl, setSlideUrl] = useState<string | null>(null);
+  const [activeSlideSetId, setActiveSlideSetId] = useState<string | null>(null);
   const [isLoadingSlides, setIsLoadingSlides] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -481,6 +507,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
   const loadSlides = useCallback(
     async (slideSetId?: string) => {
       if (slideSetId) {
+        setActiveSlideSetId(slideSetId);
         setSlideUrl(`/api/sessions/${sessionId}/slides/${slideSetId}/file`);
         setIsLoadingSlides(false);
         return;
@@ -491,7 +518,10 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
         const data = await res.json();
         if (data.slideSets?.length > 0) {
           const latest = data.slideSets[0];
+          setActiveSlideSetId(latest.id);
           setSlideUrl(`/api/sessions/${sessionId}/slides/${latest.id}/file`);
+        } else {
+          setActiveSlideSetId(null);
         }
       } finally {
         setIsLoadingSlides(false);
@@ -514,6 +544,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
     if (!socket) return;
 
     const onSlidesAvailable = ({ slideSetId }: { slideSetId: string }) => {
+      setActiveSlideSetId(slideSetId);
       setSlideUrl(`/api/sessions/${sessionId}/slides/${slideSetId}/file`);
     };
 
@@ -522,6 +553,13 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
       socket.off("slides:available", onSlidesAvailable);
     };
   }, [socket, sessionId]);
+
+  // Clear slide context when no deck is loaded
+  useEffect(() => {
+    if (!slideUrl) {
+      onSlideContextChange?.({ slidePageIndex: null, slideSetId: null });
+    }
+  }, [slideUrl, onSlideContextChange]);
 
   // -------------------------------------------------------------------------
   // Upload handler
@@ -548,6 +586,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
         }
 
         const newUrl = `/api/sessions/${sessionId}/slides/${data.slideSetId}/file`;
+        setActiveSlideSetId(data.slideSetId);
         setSlideUrl(newUrl);
 
         if (socket?.connected) {
@@ -636,6 +675,8 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
           <SlideUI
             activeDocumentId={activeDocumentId}
             isProfessor={isProfessor}
+            slideSetId={activeSlideSetId}
+            onSlideContextChange={onSlideContextChange}
             onReplaceSlides={isProfessor ? handleUpload : undefined}
             onEndLecture={isProfessor ? onEndLecture : undefined}
           />
