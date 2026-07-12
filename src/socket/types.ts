@@ -10,6 +10,8 @@ export interface QuestionCreatePayload {
   sessionId: string;
   visibility?: "PUBLIC" | "INSTRUCTOR_ONLY";
   isAnonymous?: boolean;
+  slidePageIndex?: number;
+  slideSetId?: string;
 }
 
 export interface QuestionCreatedPayload {
@@ -21,6 +23,8 @@ export interface QuestionCreatedPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  slidePageIndex?: number | null;
+  slideSetId?: string | null;
 }
 
 export interface AnswerModeChangePayload {

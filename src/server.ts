@@ -1,4 +1,9 @@
-import "dotenv/config"; // must be first — loads .env before any other module runs
+import dotenv from "dotenv";
+
+// Load .env, then let .env.local override (same as prisma.config.ts).
+// Required for `pnpm dev` outside Docker: hosts must be localhost, not postgres/redis.
+dotenv.config();
+dotenv.config({ path: ".env.local", override: true });
 import { createServer, type IncomingMessage } from "node:http";
 import next from "next";
 

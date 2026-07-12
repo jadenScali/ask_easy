@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useEffect, useRef, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, type Socket } from "socket.io-client";
 import { Download, Square, X } from "lucide-react";
@@ -11,7 +11,7 @@ import ClassChat from "./classChat";
 import SlideViewer from "./slideViewer";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/socket/types";
 import type { Question, Role } from "@/utils/types";
-import { RoomContext } from "./RoomContext";
+import { RoomContext, type SlideContextSnapshot } from "./RoomContext";
 import { SlideUpdateContext } from "./SlideUpdateContext";
 
 // ---------------------------------------------------------------------------
@@ -139,6 +139,14 @@ function RoomInner() {
   const [showEndModal, setShowEndModal] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
   const chatHistoryRef = useRef<Question[]>([]);
+  const slideContextRef = useRef<SlideContextSnapshot>({
+    slidePageIndex: null,
+    slideSetId: null,
+  });
+
+  const handleSlideContextChange = useCallback((ctx: SlideContextSnapshot) => {
+    slideContextRef.current = ctx;
+  }, []);
 
   const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(
     null
@@ -295,7 +303,9 @@ function RoomInner() {
   const isProfessor = role === "PROFESSOR";
 
   return (
-    <RoomContext.Provider value={{ socket, sessionId, userId, role, sessionTitle }}>
+    <RoomContext.Provider
+      value={{ socket, sessionId, userId, role, sessionTitle, slideContextRef }}
+    >
       <div className="relative h-screen w-full bg-background font-sans">
         <SlideUpdateContext.Provider value={{ isSlidesVisible, rerender }}>
           {isSlidesVisible ? (
@@ -309,6 +319,7 @@ function RoomInner() {
                   <SlideViewer
                     isProfessor={isProfessor}
                     onEndLecture={isProfessor ? () => setShowEndModal(true) : undefined}
+                    onSlideContextChange={handleSlideContextChange}
                   />
                 </ResizablePanel>
                 <ResizableHandle withHandle />

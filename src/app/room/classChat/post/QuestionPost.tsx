@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageCircle, CheckCircle2, Undo2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageCircle, CheckCircle2, Undo2, Trash2, ChevronDown, ChevronUp, Presentation } from "lucide-react";
 import { Question, Post } from "@/utils/types";
 import { UpvoteButton, renderUsername } from "./PostUtils";
 
@@ -176,6 +176,13 @@ export default function QuestionPost({
           />
           {renderUsername(post.user, post.isAnonymous)}
           <span>{post.timestamp}</span>
+
+          {post.slidePageIndex != null && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium">
+              <Presentation className="h-3 w-3" />
+              Slide {post.slidePageIndex + 1}
+            </span>
+          )}
 
           {hasAnyReplies && (
             <ThreadToggle

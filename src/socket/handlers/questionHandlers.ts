@@ -7,6 +7,7 @@ import {
   checkUpvoteRateLimit,
   checkResolveRateLimit,
   validateSessionForQuestions,
+  validateQuestionSlideContext,
 } from "@/lib/questionValidation";
 
 // ---------------------------------------------------------------------------
@@ -18,6 +19,8 @@ interface QuestionCreatePayload {
   sessionId: string;
   visibility?: "PUBLIC" | "INSTRUCTOR_ONLY";
   isAnonymous?: boolean;
+  slidePageIndex?: number;
+  slideSetId?: string;
 }
 
 interface QuestionBroadcastPayload {
@@ -29,6 +32,8 @@ interface QuestionBroadcastPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  slidePageIndex?: number | null;
+  slideSetId?: string | null;
 }
 
 interface QuestionUpvotePayload {
@@ -129,6 +134,21 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
         return;
       }
 
+      // 5b. Slide context validation — invalid context is dropped; question still saves
+      const slideValidation = await validateQuestionSlideContext(
+        payload.sessionId,
+        payload.slidePageIndex,
+        payload.slideSetId
+      );
+      if (
+        !slideValidation.valid &&
+        (payload.slidePageIndex != null || payload.slideSetId != null)
+      ) {
+        console.log("[QuestionHandler] Invalid slide context dropped:", slideValidation.error);
+      }
+      const slidePageIndex = slideValidation.valid ? slideValidation.slidePageIndex : null;
+      const slideSetId = slideValidation.valid ? slideValidation.slideSetId : null;
+
       // 5a. Enrollment check — any non-PROFESSOR must be enrolled in the session's course
       const sessionForEnrollment = await prisma.session.findUnique({
         where: { id: payload.sessionId },
@@ -157,6 +177,8 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
           content: payload.content.trim(),
           visibility: payload.visibility ?? "PUBLIC",
           isAnonymous: payload.isAnonymous ?? false,
+          slidePageIndex,
+          slideSetId,
         },
         include: {
           author: { select: { id: true, name: true, utorid: true } },
@@ -170,6 +192,8 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
         visibility: question.visibility,
         isAnonymous: question.isAnonymous,
         createdAt: question.createdAt,
+        slidePageIndex: question.slidePageIndex,
+        slideSetId: question.slideSetId,
         ...(question.isAnonymous
           ? {}
           : {
