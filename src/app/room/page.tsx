@@ -143,9 +143,14 @@ function RoomInner() {
     slidePageIndex: null,
     slideSetId: null,
   });
+  const [slideContext, setSlideContext] = useState<SlideContextSnapshot>({
+    slidePageIndex: null,
+    slideSetId: null,
+  });
 
   const handleSlideContextChange = useCallback((ctx: SlideContextSnapshot) => {
     slideContextRef.current = ctx;
+    setSlideContext(ctx);
   }, []);
 
   const [slideReturnTarget, setSlideReturnTarget] = useState<SlideContextSnapshot | null>(null);
@@ -344,6 +349,7 @@ function RoomInner() {
         userId,
         role,
         sessionTitle,
+        slideContext,
         slideContextRef,
         slideReturnTarget,
         navigateToQuestionSlide,
