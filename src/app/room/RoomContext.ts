@@ -20,6 +20,8 @@ export interface RoomContextValue {
   userId: string;
   role: Role;
   sessionTitle: string;
+  /** Current viewer slide position (updates as the user navigates). */
+  slideContext: SlideContextSnapshot;
   slideContextRef: MutableRefObject<SlideContextSnapshot>;
   /** Slide the user was on before jumping via a question badge, if any. */
   slideReturnTarget: SlideContextSnapshot | null;
@@ -39,6 +41,7 @@ export const RoomContext = createContext<RoomContextValue>({
   userId: "",
   role: "STUDENT",
   sessionTitle: "",
+  slideContext: { slidePageIndex: null, slideSetId: null },
   slideContextRef: defaultSlideContextRef,
   slideReturnTarget: null,
   navigateToQuestionSlide: () => {},

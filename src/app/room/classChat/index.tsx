@@ -115,6 +115,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answerMode, setAnswerMode] = useState<"all" | "instructors_only">("instructors_only");
   const [globalIsAnonymous, setGlobalIsAnonymous] = useState(false);
+  const [includeSlideContext, setIncludeSlideContext] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -447,7 +448,11 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const canAnswerGlobal = role === "TA" || role === "PROFESSOR" || answerMode === "all";
   const isInstructor = role === "TA" || role === "PROFESSOR";
 
-  const handleSubmitQuestion = (content: string, isAnonymous: boolean) => {
+  const handleSubmitQuestion = (
+    content: string,
+    isAnonymous: boolean,
+    attachSlideContext: boolean
+  ) => {
     if (!socket) return;
     setQuestionError(null);
 
@@ -460,7 +465,11 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       slideSetId?: string;
     } = { sessionId, content, isAnonymous };
 
-    if (slidePageIndex !== null && slideSetId !== null) {
+    if (
+      attachSlideContext &&
+      slidePageIndex !== null &&
+      slideSetId !== null
+    ) {
       payload.slidePageIndex = slidePageIndex;
       payload.slideSetId = slideSetId;
     }
@@ -647,6 +656,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         onClearError={() => setQuestionError(null)}
         isAnonymous={globalIsAnonymous}
         onAnonymousChange={setGlobalIsAnonymous}
+        includeSlideContext={includeSlideContext}
+        onIncludeSlideContextChange={setIncludeSlideContext}
       />
     </div>
   );
