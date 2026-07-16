@@ -288,19 +288,20 @@ function SlideUI({
       )}
 
       {/* Controls bar — always rendered */}
-      <div className="flex shrink-0 items-center justify-center gap-3 p-4 overflow-x-auto whitespace-nowrap">
-        {slideReturnTarget?.slidePageIndex != null && (
-          <>
-            <button
-              onClick={goBackToPreviousSlide}
-              className="flex items-center gap-1.5 h-9 px-3 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Undo2 className="w-3.5 h-3.5" />
-              Back to slide {slideReturnTarget.slidePageIndex + 1}
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-          </>
-        )}
+      <div className="shrink-0 w-full overflow-x-auto overscroll-x-contain">
+        <div className="flex w-max min-w-full items-center justify-center gap-3 px-4 py-4 whitespace-nowrap">
+          {slideReturnTarget?.slidePageIndex != null && (
+            <>
+              <button
+                onClick={goBackToPreviousSlide}
+                className="flex shrink-0 items-center gap-1.5 h-9 px-3 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Back to slide {slideReturnTarget.slidePageIndex + 1}
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1 shrink-0" />
+            </>
+          )}
 
         {/* Professor: live indicator + nav */}
         {isProfessor && (
@@ -433,6 +434,7 @@ function SlideUI({
             </button>
           </>
         )}
+        </div>
       </div>
     </div>
   );
