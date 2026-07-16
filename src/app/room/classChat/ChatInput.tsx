@@ -79,7 +79,7 @@ export default function ChatInput({
                 error ? "border-red-400 bg-red-50" : ""
               }`}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -106,7 +106,7 @@ export default function ChatInput({
                   <button
                     type="button"
                     onClick={() => onIncludeSlideContextChange(!includeSlideContext)}
-                    className={`flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                    className={`flex shrink-0 items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
                       includeSlideContext
                         ? "bg-stone-800 hover:bg-stone-700 text-stone-50"
                         : "bg-stone-200 hover:bg-stone-300 text-stone-700"
