@@ -19,6 +19,22 @@ import {
 } from "./RoomContext";
 import { SlideUpdateContext } from "./SlideUpdateContext";
 
+function passedSlideReturnTarget(
+  returnTarget: SlideContextSnapshot,
+  jumpTarget: SlideContextSnapshot,
+  current: SlideContextSnapshot,
+): boolean {
+  const ret = returnTarget.slidePageIndex;
+  const jump = jumpTarget.slidePageIndex;
+  const cur = current.slidePageIndex;
+  if (ret == null || jump == null || cur == null) return false;
+  if (returnTarget.slideSetId !== current.slideSetId) return false;
+
+  if (jump > ret) return cur <= ret;
+  if (jump < ret) return cur >= ret;
+  return true;
+}
+
 // ---------------------------------------------------------------------------
 // Chat history export
 // ---------------------------------------------------------------------------
@@ -148,14 +164,28 @@ function RoomInner() {
     slidePageIndex: null,
     slideSetId: null,
   });
+  const slideJumpTargetRef = useRef<SlideContextSnapshot | null>(null);
+
+  const [slideReturnTarget, setSlideReturnTarget] = useState<SlideContextSnapshot | null>(null);
+  const [slideNavTarget, setSlideNavTarget] = useState<SlideContextSnapshot | null>(null);
 
   const handleSlideContextChange = useCallback((ctx: SlideContextSnapshot) => {
     slideContextRef.current = ctx;
     publishSlideContext(ctx);
-  }, []);
 
-  const [slideReturnTarget, setSlideReturnTarget] = useState<SlideContextSnapshot | null>(null);
-  const [slideNavTarget, setSlideNavTarget] = useState<SlideContextSnapshot | null>(null);
+    setSlideReturnTarget((prev) => {
+      if (!prev?.slidePageIndex || !prev.slideSetId) return prev;
+      const jump = slideJumpTargetRef.current;
+      if (!jump) {
+        return ctx.slidePageIndex === prev.slidePageIndex && ctx.slideSetId === prev.slideSetId
+          ? null
+          : prev;
+      }
+      if (!passedSlideReturnTarget(prev, jump, ctx)) return prev;
+      slideJumpTargetRef.current = null;
+      return null;
+    });
+  }, []);
 
   const navigateToQuestionSlide = useCallback(
     (target: SlideNavigationTarget) => {
@@ -171,6 +201,10 @@ function RoomInner() {
         slideReturnTarget === null
       ) {
         setSlideReturnTarget({ ...current });
+        slideJumpTargetRef.current = {
+          slidePageIndex: target.slidePageIndex,
+          slideSetId: target.slideSetId,
+        };
       }
 
       setIsSlidesVisible(true);
@@ -185,6 +219,7 @@ function RoomInner() {
   const goBackToPreviousSlide = useCallback(() => {
     if (slideReturnTarget?.slidePageIndex == null || !slideReturnTarget?.slideSetId) return;
     setSlideNavTarget({ ...slideReturnTarget });
+    slideJumpTargetRef.current = null;
     setSlideReturnTarget(null);
   }, [slideReturnTarget]);
 
