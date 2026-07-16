@@ -11,7 +11,12 @@ import ClassChat from "./classChat";
 import SlideViewer from "./slideViewer";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/socket/types";
 import type { Question, Role } from "@/utils/types";
-import { RoomContext, type SlideContextSnapshot, type SlideNavigationTarget } from "./RoomContext";
+import {
+  RoomContext,
+  publishSlideContext,
+  type SlideContextSnapshot,
+  type SlideNavigationTarget,
+} from "./RoomContext";
 import { SlideUpdateContext } from "./SlideUpdateContext";
 
 // ---------------------------------------------------------------------------
@@ -143,14 +148,10 @@ function RoomInner() {
     slidePageIndex: null,
     slideSetId: null,
   });
-  const [slideContext, setSlideContext] = useState<SlideContextSnapshot>({
-    slidePageIndex: null,
-    slideSetId: null,
-  });
 
   const handleSlideContextChange = useCallback((ctx: SlideContextSnapshot) => {
     slideContextRef.current = ctx;
-    setSlideContext(ctx);
+    publishSlideContext(ctx);
   }, []);
 
   const [slideReturnTarget, setSlideReturnTarget] = useState<SlideContextSnapshot | null>(null);
@@ -349,7 +350,6 @@ function RoomInner() {
         userId,
         role,
         sessionTitle,
-        slideContext,
         slideContextRef,
         slideReturnTarget,
         navigateToQuestionSlide,

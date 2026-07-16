@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useSyncExternalStore } from "react";
 import type { MutableRefObject } from "react";
 import type { Socket } from "socket.io-client";
 import type { ClientToServerEvents, ServerToClientEvents } from "@/socket/types";
@@ -20,8 +20,7 @@ export interface RoomContextValue {
   userId: string;
   role: Role;
   sessionTitle: string;
-  /** Current viewer slide position (updates as the user navigates). */
-  slideContext: SlideContextSnapshot;
+  /** Latest viewer slide position — read `.current` in handlers (does not re-render). */
   slideContextRef: MutableRefObject<SlideContextSnapshot>;
   /** Slide the user was on before jumping via a question badge, if any. */
   slideReturnTarget: SlideContextSnapshot | null;
@@ -41,7 +40,6 @@ export const RoomContext = createContext<RoomContextValue>({
   userId: "",
   role: "STUDENT",
   sessionTitle: "",
-  slideContext: { slidePageIndex: null, slideSetId: null },
   slideContextRef: defaultSlideContextRef,
   slideReturnTarget: null,
   navigateToQuestionSlide: () => {},
@@ -50,4 +48,26 @@ export const RoomContext = createContext<RoomContextValue>({
 
 export function useRoom() {
   return useContext(RoomContext);
+}
+
+/** Slide label for ChatInput only — avoids re-rendering the chat list on page flips. */
+let slideUiSnapshot: SlideContextSnapshot = { slidePageIndex: null, slideSetId: null };
+const slideUiListeners = new Set<() => void>();
+
+export function publishSlideContext(ctx: SlideContextSnapshot) {
+  slideUiSnapshot = ctx;
+  slideUiListeners.forEach((l) => l());
+}
+
+export function useSlideContext() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      slideUiListeners.add(onStoreChange);
+      return () => {
+        slideUiListeners.delete(onStoreChange);
+      };
+    },
+    () => slideUiSnapshot,
+    () => slideUiSnapshot,
+  );
 }

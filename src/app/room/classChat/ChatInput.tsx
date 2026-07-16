@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Ghost, User, Send, Presentation } from "lucide-react";
-import { useRoom } from "../RoomContext";
+import { useSlideContext } from "../RoomContext";
 
 const MIN_LENGTH = 5;
 
@@ -28,7 +28,7 @@ export default function ChatInput({
   includeSlideContext,
   onIncludeSlideContextChange,
 }: ChatInputProps) {
-  const { slideContext } = useRoom();
+  const slideContext = useSlideContext();
   const [content, setContent] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
