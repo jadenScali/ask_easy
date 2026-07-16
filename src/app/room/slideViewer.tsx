@@ -303,137 +303,137 @@ function SlideUI({
             </>
           )}
 
-        {/* Professor: live indicator + nav */}
-        {isProfessor && (
-          <>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
-              <Radio className="w-4 h-4" />
-              Live
-            </div>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-stone-100 text-stone-700 rounded-md text-sm font-medium">
-              <Users className="w-4 h-4" />
-              {viewerCount}
-            </div>
-            {onReplaceSlides && (
-              <>
+          {/* Professor: live indicator + nav */}
+          {isProfessor && (
+            <>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
+                <Radio className="w-4 h-4" />
+                Live
+              </div>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-stone-100 text-stone-700 rounded-md text-sm font-medium">
+                <Users className="w-4 h-4" />
+                {viewerCount}
+              </div>
+              {onReplaceSlides && (
+                <>
+                  <input
+                    ref={replaceInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={handleReplaceFile}
+                  />
+                  <button
+                    onClick={() => replaceInputRef.current?.click()}
+                    className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Replace
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleEndLecture}
+                className="flex items-center gap-1.5 h-9 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                End Lecture
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 <input
-                  ref={replaceInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  onChange={handleReplaceFile}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onBlur={() => handleInputCommit(inputValue)}
+                  onKeyDown={handleKeyDown}
+                  className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
                 />
-                <button
-                  onClick={() => replaceInputRef.current?.click()}
-                  className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  Replace
-                </button>
-              </>
-            )}
-            <button
-              onClick={handleEndLecture}
-              className="flex items-center gap-1.5 h-9 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              End Lecture
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={() => handleInputCommit(inputValue)}
-                onKeyDown={handleKeyDown}
-                className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
-              />
-              {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
-            </div>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo((pageIndex + 1) % pageCount)}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
+                {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
+              </div>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo((pageIndex + 1) % pageCount)}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
 
-        {/* Student: following mode */}
-        {!isProfessor && isSynced && (
-          <>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
-              <Navigation className="w-4 h-4" />
-              Following Professor
-            </div>
-            <button
-              onClick={handleToggleSync}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Unlink className="w-3.5 h-3.5" />
-              Browse Freely
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Exit
-            </button>
-          </>
-        )}
+          {/* Student: following mode */}
+          {!isProfessor && isSynced && (
+            <>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
+                <Navigation className="w-4 h-4" />
+                Following Professor
+              </div>
+              <button
+                onClick={handleToggleSync}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Unlink className="w-3.5 h-3.5" />
+                Browse Freely
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Exit
+              </button>
+            </>
+          )}
 
-        {/* Student: free navigation mode */}
-        {!isProfessor && !isSynced && (
-          <>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={() => handleInputCommit(inputValue)}
-                onKeyDown={handleKeyDown}
-                className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
-              />
-              {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
-            </div>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo((pageIndex + 1) % pageCount)}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleToggleSync}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Radio className="w-4 h-4" />
-              Back to Live
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Exit
-            </button>
-          </>
-        )}
+          {/* Student: free navigation mode */}
+          {!isProfessor && !isSynced && (
+            <>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onBlur={() => handleInputCommit(inputValue)}
+                  onKeyDown={handleKeyDown}
+                  className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
+                />
+                {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
+              </div>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo((pageIndex + 1) % pageCount)}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleToggleSync}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Radio className="w-4 h-4" />
+                Back to Live
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Exit
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -68,6 +68,6 @@ export function useSlideContext() {
       };
     },
     () => slideUiSnapshot,
-    () => slideUiSnapshot,
+    () => slideUiSnapshot
   );
 }

@@ -22,7 +22,7 @@ import { SlideUpdateContext } from "./SlideUpdateContext";
 function passedSlideReturnTarget(
   returnTarget: SlideContextSnapshot,
   jumpTarget: SlideContextSnapshot,
-  current: SlideContextSnapshot,
+  current: SlideContextSnapshot
 ): boolean {
   const ret = returnTarget.slidePageIndex;
   const jump = jumpTarget.slidePageIndex;
