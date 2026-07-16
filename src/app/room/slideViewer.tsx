@@ -164,17 +164,20 @@ function SlideUI({
     [pageCount, isProfessor, isSynced]
   );
 
-  const navigateTo = (newIndex: number) => {
-    if (pageCount === 0) return;
-    const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
-    navigateToLocal(clamped);
+  const navigateTo = useCallback(
+    (newIndex: number) => {
+      if (pageCount === 0) return;
+      const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
+      navigateToLocal(clamped);
 
-    if (isProfessor && socket) {
-      socket.emit("slide:change", { sessionId, pageIndex: clamped });
-    }
-  };
+      if (isProfessor && socket) {
+        socket.emit("slide:change", { sessionId, pageIndex: clamped });
+      }
+    },
+    [pageCount, navigateToLocal, isProfessor, socket, sessionId]
+  );
 
-  // Jump to a question's slide without moving the professor's live deck
+  // Question-badge jump: professor broadcasts; students detach from follow mode
   useEffect(() => {
     if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
     if (slideNavTarget.slideSetId !== slideSetId) return;
@@ -182,9 +185,13 @@ function SlideUI({
 
     const targetPage = slideNavTarget.slidePageIndex;
     queueMicrotask(() => {
-      navigateToLocal(targetPage, { detachFromProfessor: true });
+      if (isProfessor) {
+        navigateTo(targetPage);
+      } else {
+        navigateToLocal(targetPage, { detachFromProfessor: true });
+      }
     });
-  }, [slideNavTarget, slideSetId, pageCount, navigateToLocal]);
+  }, [slideNavTarget, slideSetId, pageCount, navigateToLocal, navigateTo, isProfessor]);
 
   const handleInputCommit = (value: string) => {
     const num = parseInt(value, 10);
