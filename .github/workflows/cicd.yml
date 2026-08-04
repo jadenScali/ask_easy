@@ -45,7 +45,10 @@ jobs:
       # Only main publishes :latest
       - name: Login to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Publish Docker Image to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker push jadendocks/ask_easy:latest
