@@ -1,38 +1,27 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 // ---------------------------------------------------------------------------
 // Admin whitelist
 //
-// Reads `admin_whitelist.txt` (or the path in ADMIN_WHITELIST_PATH env var)
-// to determine which UTORids have god-mode dashboard access.
-// One UTORid per line; comment lines start with #.
+// Reads the ADMIN_WHITELIST env var to determine which UTORids have god-mode
+// dashboard access. Comma-separated; surrounding whitespace is ignored.
 //
-// File format (one entry per line):
-//   utorid
-//   # comment lines are ignored
+// Example:
+//   ADMIN_WHITELIST=smithj,doejohn
 // ---------------------------------------------------------------------------
 
 function loadAdminWhitelist(): Set<string> {
-  const whitelistPath = resolve(process.env.ADMIN_WHITELIST_PATH ?? "./admin_whitelist.txt");
+  const raw = process.env.ADMIN_WHITELIST;
 
-  let contents: string;
-  try {
-    contents = readFileSync(whitelistPath, "utf-8");
-  } catch {
+  if (!raw) {
     console.warn(
-      `[admin-whitelist] Could not read admin whitelist at ${whitelistPath}. No users will have dashboard access.`
+      "[admin-whitelist] ADMIN_WHITELIST is not set. No users will have dashboard access."
     );
     return new Set();
   }
 
   const set = new Set<string>();
 
-  for (const rawLine of contents.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const utorid = line.split(",")[0].trim().toLowerCase();
+  for (const rawEntry of raw.split(",")) {
+    const utorid = rawEntry.trim().toLowerCase();
     if (utorid) set.add(utorid);
   }
 
@@ -40,7 +29,7 @@ function loadAdminWhitelist(): Set<string> {
 }
 
 // Loaded once at startup (module-level cache).
-// Restart the server to pick up changes to admin_whitelist.txt.
+// Restart the server to pick up changes to ADMIN_WHITELIST.
 const ADMIN_WHITELIST: Set<string> = loadAdminWhitelist();
 
 /**
