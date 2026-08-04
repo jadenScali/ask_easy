@@ -40,8 +40,6 @@ jobs:
         run: pnpm test
 
       # CD
-      - name: Create .env file
-        run: echo "SITE_URL=${{ env.SITE_URL }}" >> .env
       - name: Build Docker Image
         run: docker build -t jadendocks/ask_easy .
       # Only main publishes :latest
