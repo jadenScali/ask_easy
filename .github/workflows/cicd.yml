@@ -44,13 +44,17 @@ jobs:
         run: echo "SITE_URL=${{ env.SITE_URL }}" >> .env
       - name: Build Docker Image
         run: docker build -t jadendocks/ask_easy .
+      # Only main publishes :latest
       - name: Login to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Publish Docker Image to Docker Hub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker push jadendocks/ask_easy:latest
 
   deploy:
     needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: self-hosted
     steps:
       - name: Clean up Docker to free disk space
@@ -58,6 +62,6 @@ jobs:
       - name: Pull Image from Docker Hub
         run: docker pull jadendocks/ask_easy:latest
       - name: Stop and Remove Existing Container
-        run: docker rm -f ask_easy
+        run: docker rm -f ask_easy || true
       - name: Run Docker Container
         run: docker run -d -p 3000:3000 --name ask_easy jadendocks/ask_easy:latest
