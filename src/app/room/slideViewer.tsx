@@ -70,6 +70,9 @@ function SlideUI({
   const [isSynced, setIsSynced] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
   const professorPageRef = useRef(0);
+  // Each navigateToQuestionSlide call creates a new target object; apply once per object
+  // so re-runs (e.g. isSynced → navigateToLocal identity) don't re-detach from live.
+  const appliedNavTargetRef = useRef<SlideContextSnapshot | null>(null);
 
   const { provides: docManager } = useDocumentManagerCapability();
   const activeDocument = docManager?.getActiveDocument();
@@ -182,7 +185,9 @@ function SlideUI({
     if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
     if (slideNavTarget.slideSetId !== slideSetId) return;
     if (pageCount === 0) return;
+    if (appliedNavTargetRef.current === slideNavTarget) return;
 
+    appliedNavTargetRef.current = slideNavTarget;
     const targetPage = slideNavTarget.slidePageIndex;
     queueMicrotask(() => {
       if (isProfessor) {
