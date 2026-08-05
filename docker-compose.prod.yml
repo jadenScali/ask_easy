@@ -4,9 +4,20 @@
 # Usage:
 #   docker compose -p ask_easy --env-file /home/easy/secrets/prod.env \
 #     -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Docker's json-file driver is unbounded by default, and postgres/redis are
+# never recreated by a deploy, so their logs would grow until the disk filled.
+# 25m x 4 caps each service at 100MB while keeping recent history in chunks.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "25m"
+    max-file: "4"
+
 services:
   app:
     image: jadendocks/ask_easy:latest
+    logging: *logging
     volumes:
       # Named volume, not a bind mount: the deploy checkout is wiped on every
       # run, so anything stored relative to it would be destroyed.
@@ -17,10 +28,12 @@ services:
       - REDIS_URL=redis://:${REDIS_PASSWORD:?required in prod.env}@redis:6379
 
   postgres:
+    logging: *logging
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required in prod.env}
 
   redis:
+    logging: *logging
     command: redis-server --requirepass ${REDIS_PASSWORD:?required in prod.env}
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?required in prod.env}", "ping"]
