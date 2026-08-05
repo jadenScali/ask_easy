@@ -1,15 +1,17 @@
-# Production override - uses pre-built image from Docker Hub
-# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Production override - runs the pre-built image from Docker Hub.
+# The VM never builds; the deploy job only pulls and restarts.
+#
+# Usage:
+#   docker compose -p ask_easy --env-file /home/easy/secrets/prod.env \
+#     -f docker-compose.yml -f docker-compose.prod.yml up -d
 services:
   app:
     image: jadendocks/ask_easy:latest
-    build:
-      context: .
     volumes:
-      - ./src/server.ts:/app/src/server.ts:ro
-      - ./src/app/api/auth/session/route.ts:/app/src/app/api/auth/session/route.ts:ro
-      - ./uploads:/app/uploads
-    env_file: .env
+      # Named volume, not a bind mount: the deploy checkout is wiped on every
+      # run, so anything stored relative to it would be destroyed.
+      - uploads_data:/app/uploads
+    env_file: /home/easy/secrets/prod.env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
@@ -22,3 +24,6 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD}
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+
+volumes:
+  uploads_data:
