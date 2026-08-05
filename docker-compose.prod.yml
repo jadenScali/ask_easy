@@ -13,17 +13,17 @@ services:
       - uploads_data:/app/uploads
     env_file: /home/easy/secrets/prod.env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:?required in prod.env}:${POSTGRES_PASSWORD:?required in prod.env}@postgres:5432/${POSTGRES_DB:?required in prod.env}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?required in prod.env}@redis:6379
 
   postgres:
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required in prod.env}
 
   redis:
-    command: redis-server --requirepass ${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?required in prod.env}
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?required in prod.env}", "ping"]
 
 volumes:
   uploads_data:
