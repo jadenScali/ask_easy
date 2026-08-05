@@ -40,8 +40,13 @@ jobs:
         run: pnpm test
 
       # CD
+      # The revision label records which commit this image was built from,
+      # so `docker inspect` on the VM can answer "what is actually running?"
       - name: Build Docker Image
-        run: docker build -t jadendocks/ask_easy .
+        run: |
+          docker build \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            -t jadendocks/ask_easy .
       # Only main publishes :latest
       - name: Login to Docker Hub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
