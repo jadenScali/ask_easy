@@ -53,6 +53,7 @@ CREATE TABLE "Session" (
     "isSubmissionsEnabled" BOOLEAN NOT NULL DEFAULT false,
     "startTime" TIMESTAMP(3),
     "endTime" TIMESTAMP(3),
+    "lastActivityAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -60,20 +61,24 @@ CREATE TABLE "Session" (
 );
 
 -- CreateTable
-CREATE TABLE "Slide" (
+CREATE TABLE "SlideSet" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
-    "slideNumber" INTEGER NOT NULL,
-    "contentUrl" TEXT NOT NULL,
+    "filename" TEXT NOT NULL,
+    "storageKey" TEXT NOT NULL,
+    "pageCount" INTEGER NOT NULL,
+    "fileSize" INTEGER NOT NULL,
+    "uploadedBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Slide_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SlideSet_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Question" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
-    "slideId" TEXT,
     "authorId" TEXT,
     "content" TEXT NOT NULL,
     "isAnonymous" BOOLEAN NOT NULL DEFAULT false,
@@ -91,10 +96,21 @@ CREATE TABLE "Answer" (
     "questionId" TEXT NOT NULL,
     "authorId" TEXT NOT NULL,
     "content" TEXT NOT NULL,
+    "isAnonymous" BOOLEAN NOT NULL DEFAULT false,
     "isAccepted" BOOLEAN NOT NULL DEFAULT false,
+    "upvoteCount" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Answer_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AnswerUpvote" (
+    "id" TEXT NOT NULL,
+    "answerId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "AnswerUpvote_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -143,13 +159,13 @@ CREATE INDEX "Session_createdById_idx" ON "Session"("createdById");
 CREATE INDEX "Session_status_idx" ON "Session"("status");
 
 -- CreateIndex
-CREATE INDEX "Slide_sessionId_idx" ON "Slide"("sessionId");
+CREATE INDEX "SlideSet_sessionId_idx" ON "SlideSet"("sessionId");
+
+-- CreateIndex
+CREATE INDEX "SlideSet_uploadedBy_idx" ON "SlideSet"("uploadedBy");
 
 -- CreateIndex
 CREATE INDEX "Question_sessionId_idx" ON "Question"("sessionId");
-
--- CreateIndex
-CREATE INDEX "Question_slideId_idx" ON "Question"("slideId");
 
 -- CreateIndex
 CREATE INDEX "Question_authorId_idx" ON "Question"("authorId");
@@ -168,6 +184,15 @@ CREATE INDEX "Answer_questionId_idx" ON "Answer"("questionId");
 
 -- CreateIndex
 CREATE INDEX "Answer_authorId_idx" ON "Answer"("authorId");
+
+-- CreateIndex
+CREATE INDEX "AnswerUpvote_answerId_idx" ON "AnswerUpvote"("answerId");
+
+-- CreateIndex
+CREATE INDEX "AnswerUpvote_userId_idx" ON "AnswerUpvote"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "AnswerUpvote_answerId_userId_key" ON "AnswerUpvote"("answerId", "userId");
 
 -- CreateIndex
 CREATE INDEX "QuestionUpvote_questionId_idx" ON "QuestionUpvote"("questionId");
@@ -194,25 +219,32 @@ ALTER TABLE "Session" ADD CONSTRAINT "Session_courseId_fkey" FOREIGN KEY ("cours
 ALTER TABLE "Session" ADD CONSTRAINT "Session_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Slide" ADD CONSTRAINT "Slide_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "SlideSet" ADD CONSTRAINT "SlideSet_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SlideSet" ADD CONSTRAINT "SlideSet_uploadedBy_fkey" FOREIGN KEY ("uploadedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Question" ADD CONSTRAINT "Question_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "Session"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Question" ADD CONSTRAINT "Question_slideId_fkey" FOREIGN KEY ("slideId") REFERENCES "Slide"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Question" ADD CONSTRAINT "Question_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Answer" ADD CONSTRAINT "Answer_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Answer" ADD CONSTRAINT "Answer_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Answer" ADD CONSTRAINT "Answer_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "QuestionUpvote" ADD CONSTRAINT "QuestionUpvote_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AnswerUpvote" ADD CONSTRAINT "AnswerUpvote_answerId_fkey" FOREIGN KEY ("answerId") REFERENCES "Answer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AnswerUpvote" ADD CONSTRAINT "AnswerUpvote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "QuestionUpvote" ADD CONSTRAINT "QuestionUpvote_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "Question"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "QuestionUpvote" ADD CONSTRAINT "QuestionUpvote_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
