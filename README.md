@@ -50,59 +50,72 @@ AskEasy is built for that moment. It gives every lecture a live Q&A room where t
 
 ### How the pieces connect
 
-| Component | Role |
-|-----------|------|
-| **Custom server (`server.ts`)** | Single Node.js process that boots both Next.js and Socket.IO on the same port. Strips Shibboleth headers from non-localhost connections to prevent spoofing. |
-| **Next.js App Router** | Serves all pages and REST API routes (`/api/*`). Server Components fetch from PostgreSQL via Prisma; API routes handle auth, course/session management, and slide uploads. |
-| **Socket.IO** | Handles all real-time events (questions, answers, upvotes, slide page changes). Uses a Redis adapter so multiple app instances share the same pub/sub channel. |
-| **PostgreSQL + Prisma** | Single source of truth for all persistent data. Prisma handles the schema, migrations, and typed queries. |
-| **Redis** | Three jobs: Socket.IO pub/sub adapter, rate-limit counters (per-user sliding windows), and ephemeral answer-mode state (24-hour TTL). |
-| **Apache + mod_shib** *(prod only)* | Terminates TLS, enforces Shibboleth SSO, and injects `utorid`/`mail`/`cn` headers before proxying to the app. |
+| Component                           | Role                                                                                                                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Custom server (`server.ts`)**     | Single Node.js process that boots both Next.js and Socket.IO on the same port. Strips Shibboleth headers from non-localhost connections to prevent spoofing.               |
+| **Next.js App Router**              | Serves all pages and REST API routes (`/api/*`). Server Components fetch from PostgreSQL via Prisma; API routes handle auth, course/session management, and slide uploads. |
+| **Socket.IO**                       | Handles all real-time events (questions, answers, upvotes, slide page changes). Uses a Redis adapter so multiple app instances share the same pub/sub channel.             |
+| **PostgreSQL + Prisma**             | Single source of truth for all persistent data. Prisma handles the schema, migrations, and typed queries.                                                                  |
+| **Redis**                           | Three jobs: Socket.IO pub/sub adapter, rate-limit counters (per-user sliding windows), and ephemeral answer-mode state (24-hour TTL).                                      |
+| **Apache + mod_shib** _(prod only)_ | Terminates TLS, enforces Shibboleth SSO, and injects `utorid`/`mail`/`cn` headers before proxying to the app.                                                              |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, Radix UI |
-| Backend | Next.js API routes + custom Node.js HTTP server |
-| Real-time | Socket.IO with Redis adapter |
-| Database | PostgreSQL 16 (via Prisma ORM) |
-| Cache / Pub-sub | Redis 7 |
-| Auth | iron-session + Shibboleth header-based SSO |
-| Testing | Vitest, Testing Library |
-| Containerization | Docker & Docker Compose |
+| Layer            | Technology                                      |
+| ---------------- | ----------------------------------------------- |
+| Frontend         | Next.js 16, React 19, Tailwind CSS 4, Radix UI  |
+| Backend          | Next.js API routes + custom Node.js HTTP server |
+| Real-time        | Socket.IO with Redis adapter                    |
+| Database         | PostgreSQL 16 (via Prisma ORM)                  |
+| Cache / Pub-sub  | Redis 7                                         |
+| Auth             | iron-session + Shibboleth header-based SSO      |
+| Testing          | Vitest, Testing Library                         |
+| Containerization | Docker & Docker Compose                         |
 
 ---
 
 ## Environment Variables
 
-### `.env` — used by Docker Compose and production
+Both files below are gitignored and live in the project root. **Production does not use them** — the server reads its own file at `/home/easy/secrets/prod.env`, which is created by hand and never touched by a deploy.
+
+### `.env` — base values
 
 ```bash
 # PostgreSQL
-DATABASE_URL=postgresql://postgres:<password>@postgres:5432/ask_easy
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=<strong-password>
+POSTGRES_PASSWORD=<password>
 POSTGRES_DB=ask_easy
 
 # Redis
-REDIS_URL=redis://:<redis-password>@redis:6379
-REDIS_PASSWORD=<redis-password>
+REDIS_PASSWORD=<password>
 
 # Session encryption key — generate with: openssl rand -hex 32
 SESSION_SECRET=<64-char-hex>
 
 # Cron job auth (for /api/cron/cleanup-sessions)
 CRON_SECRET=<random-secret>
+
+# Roles — comma-separated UTORids, case-insensitive
+PROFESSOR_WHITELIST=utorid1,utorid2
+ADMIN_WHITELIST=utorid1
 ```
 
-### `.env.local` — local dev only (overrides hosts to `localhost`)
+`DATABASE_URL` and `REDIS_URL` are **not** listed here. Docker Compose builds them from the values above so the passwords have a single source of truth:
+
+```yaml
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+```
+
+### `.env.local` — local dev only
+
+Loaded after `.env` and overrides it. Needed because `pnpm dev` runs the app outside Docker, so it must reach the containers on `localhost` rather than by service name.
 
 ```bash
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ask_easy
-REDIS_URL=redis://:changeme@localhost:6379
+DATABASE_URL=postgresql://postgres:<password>@localhost:5432/ask_easy
+REDIS_URL=redis://:<password>@localhost:6379
 
 # Fake SSO identity for local login
 DEV_UTORID=yourutorid
@@ -111,20 +124,25 @@ DEV_EMAIL=your.email@mail.utoronto.ca
 DEV_ROLE=PROFESSOR   # or STUDENT
 ```
 
-> **Note:** In Docker Compose the database and Redis hosts are the service names (`postgres`, `redis`). In `pnpm dev` they must be `localhost` because the app runs outside Docker.
+> **The `DEV_*` variables must never be set in production.** The auth route falls back to `DEV_UTORID` whenever the Shibboleth header is missing, so setting them on the server would allow unauthenticated logins.
 
-| Variable | Required | Description |
-|----------|:--------:|-------------|
-| `DATABASE_URL` | Yes | Prisma connection string |
-| `POSTGRES_USER` / `PASSWORD` / `DB` | Yes | Postgres container credentials |
-| `REDIS_URL` | Yes | Redis connection (include password if set) |
-| `REDIS_PASSWORD` | Yes (Docker) | Passed to the Redis container |
-| `SESSION_SECRET` | Yes | 64-char hex key for iron-session cookie encryption |
-| `CRON_SECRET` | Prod | Bearer token for the cleanup-sessions cron endpoint |
-| `DEV_UTORID` | Dev | Fake UTORid injected when Shibboleth is not present |
-| `DEV_NAME` | Dev | Display name for the fake dev user |
-| `DEV_EMAIL` | Dev | Email for the fake dev user |
-| `DEV_ROLE` | Dev | `PROFESSOR` or `STUDENT` — overrides whitelist lookup |
+| Variable                            | Required | Description                                                                 |
+| ----------------------------------- | :------: | --------------------------------------------------------------------------- |
+| `POSTGRES_USER` / `PASSWORD` / `DB` |   Yes    | Postgres credentials                                                        |
+| `REDIS_PASSWORD`                    |   Yes    | Passed to the Redis container as `--requirepass`                            |
+| `SESSION_SECRET`                    |   Yes    | Key for iron-session cookie encryption. Changing it logs everyone out.      |
+| `PROFESSOR_WHITELIST`               |   Yes    | UTORids granted the PROFESSOR role on login. Everyone else is a STUDENT.    |
+| `ADMIN_WHITELIST`                   |   Yes    | UTORids granted `/dashboard` access. Empty means nobody can administer.     |
+| `CRON_SECRET`                       |   Yes    | Bearer token for the cleanup-sessions cron endpoint                         |
+| `DATABASE_URL`                      |   Dev    | Only in `.env.local`; Compose derives it otherwise                          |
+| `REDIS_URL`                         |   Dev    | Only in `.env.local`; Compose derives it otherwise                          |
+| `DEV_UTORID`                        |   Dev    | Fake UTORid injected when Shibboleth is not present                         |
+| `DEV_NAME`                          |   Dev    | Display name for the fake dev user                                          |
+| `DEV_EMAIL`                         |   Dev    | Email for the fake dev user; defaults to `<utorid>@mail.utoronto.ca`        |
+| `DEV_ROLE`                          |   Dev    | `PROFESSOR` or `STUDENT` — overrides whitelist lookup                       |
+| `SOCKET_IO_USE_REDIS`               |    No    | Set to `"false"` to disable the Socket.IO Redis adapter. Enabled otherwise. |
+
+Whitelists are read once at startup and cached, so restart the app after changing them.
 
 ---
 
@@ -146,13 +164,9 @@ pnpm install
 
 ### 2. Configure environment
 
-Copy the example and edit as needed:
+Create `.env` and `.env.local` in the project root using the templates in [Environment Variables](#environment-variables) above. Both are gitignored, so a fresh clone has neither.
 
-```bash
-cp .env .env.local
-```
-
-Set `DEV_UTORID`, `DEV_NAME`, and `DEV_ROLE` in `.env.local` to control which user you log in as during development. Set `DEV_ROLE=PROFESSOR` to access course management features.
+Put your own UTORid in `PROFESSOR_WHITELIST` and `ADMIN_WHITELIST`, and set `DEV_UTORID` to the same value so your fake dev login picks up those roles.
 
 ### 3. Start the database and Redis
 
@@ -163,8 +177,11 @@ docker-compose up -d postgres redis
 ### 4. Set up the database schema
 
 ```bash
-pnpm db:setup   # generates Prisma client and pushes schema
+pnpm db:generate            # build the Prisma client from schema.prisma
+pnpm prisma migrate deploy  # apply all migrations
 ```
+
+> **Do not use `pnpm db:push` or `pnpm db:setup`.** They change your database directly without creating a migration file, so the change never reaches anyone else or production. Schema changes always go through `pnpm db:migrate`, and the generated migration must be committed.
 
 ### 5. Start the dev server
 
@@ -174,63 +191,70 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000). The app auto-reloads on changes.
 
+### Switching branches
+
+`git checkout` only updates tracked files. The Prisma client (`src/generated/`) and `node_modules/` are gitignored, so they keep whatever the previous branch left behind. Run this after switching to any branch that touches `prisma/schema.prisma` or `package.json`:
+
+```bash
+pnpm install        # lockfile may differ between branches
+pnpm db:generate    # regenerate the Prisma client from this branch's schema
+```
+
+Then **restart `pnpm dev`** — the running server holds the old client in memory.
+
+If the branch adds or removes migrations, also apply them:
+
+```bash
+pnpm prisma migrate deploy
+pnpm prisma migrate status   # should report "Database schema is up to date"
+```
+
+If `migrate status` reports migrations applied to the database but missing locally (common when switching between branches with different migration history), reset the local database:
+
+```bash
+docker-compose down -v
+docker-compose up -d postgres redis
+pnpm prisma migrate deploy
+```
+
+#### Symptoms of skipping this
+
+| Error                                                                                   | Cause                                         | Fix                                    |
+| --------------------------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------- |
+| `The column X does not exist in the current database`                                   | Prisma client is from another branch's schema | `pnpm db:generate`, restart dev server |
+| `Cannot find module ...`                                                                | Dependencies differ between branches          | `pnpm install`                         |
+| `migration ... applied to the database but missing from the local migrations directory` | Migration history differs                     | Reset the local database as above      |
+
+> **Always use `pnpm db:migrate` for schema changes, never `pnpm db:push`.** `db:push` updates your database without creating a migration file, so the change is invisible to everyone else and never reaches production. A missing migration will not surface until a database is rebuilt from scratch.
+
 ---
 
-## Running in Production
+## Deployment
 
-Production uses a pre-built Docker image from Docker Hub layered with the `docker-compose.prod.yml` override. This mounts the auth route, server entry, whitelist, and uploads directory from the host so they can be updated without rebuilding the image.
+Merging to `main` deploys automatically. GitHub Actions builds and tests the code, pushes the image to Docker Hub, and a self-hosted runner on the VM pulls it, applies migrations, and restarts the app container.
 
-### 1. Configure `.env`
-
-Create `.env` in the project root with production values (see [Environment Variables](#environment-variables) above). Use the Docker service names as hosts:
-
-```
-DATABASE_URL=postgresql://postgres:<password>@postgres:5432/ask_easy
-REDIS_URL=redis://:<redis-password>@redis:6379
-```
-
-### 2. Pull and start
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-This starts three containers: `app` (Next.js on port 3000, bound to `127.0.0.1`), `postgres`, and `redis`. The app is not publicly exposed — Apache sits in front of it.
-
-### 3. Apply database migrations
-
-```bash
-docker exec ask_easy-app-1 npx prisma migrate deploy
-```
-
-### 4. Set up Apache + Shibboleth (first time)
-
-Speak to UofT IT Admin.
-
-### Updating the running app
-
-```bash
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml pull app
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d app
-```
+Pull requests run the same build and tests but do not deploy. The workflow is [.github/workflows/cicd.yml](.github/workflows/cicd.yml).
 
 ---
 
 ## Available Scripts
 
-| Script | Description |
-|--------|-------------|
-| `pnpm dev` | Start development server with hot reload |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint |
-| `pnpm format` | Format code with Prettier |
-| `pnpm test` | Run unit tests (Vitest) |
-| `pnpm test:integration` | Run integration tests |
-| `pnpm db:setup` | Generate Prisma client + push schema |
-| `pnpm db:migrate` | Run database migrations |
-| `pnpm db:studio` | Open Prisma Studio GUI |
-| `pnpm db:seed` | Reset database (clears all tables — destructive) |
+| Script                       | Description                                        |
+| ---------------------------- | -------------------------------------------------- |
+| `pnpm dev`                   | Start development server with hot reload           |
+| `pnpm build`                 | Build for production                               |
+| `pnpm start`                 | Start production server                            |
+| `pnpm lint`                  | Run ESLint                                         |
+| `pnpm format`                | Format code with Prettier                          |
+| `pnpm test`                  | Run unit tests (Vitest)                            |
+| `pnpm test:integration`      | Run integration tests                              |
+| `pnpm db:generate`           | Generate the Prisma client from `schema.prisma`    |
+| `pnpm db:migrate`            | Create and apply a migration after a schema change |
+| `pnpm prisma migrate deploy` | Apply existing migrations without creating one     |
+| `pnpm db:studio`             | Open Prisma Studio GUI                             |
+| `pnpm db:seed`               | Reset database (clears all tables — destructive)   |
+
+`pnpm db:push` and `pnpm db:setup` exist but should not be used — see the warning in [step 4](#4-set-up-the-database-schema).
 
 ---
 
@@ -253,11 +277,9 @@ prisma/
 ├── schema.prisma         # Database schema
 ├── migrations/           # Migration history
 └── seed.ts               # Resets all tables (dev use only)
-whitelist.txt
-admin_whitelist.txt
 ```
 
-Check out docs/admin_whitelist.txt for more details on setting up admin permissions.
+Professor and admin permissions are set with the `PROFESSOR_WHITELIST` and `ADMIN_WHITELIST` environment variables — see [docs/ADMIN-GUIDE.md](docs/ADMIN-GUIDE.md) for details.
 
 ---
 
