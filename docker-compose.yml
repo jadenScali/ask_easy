@@ -11,9 +11,7 @@ services:
       - SESSION_SECRET=${SESSION_SECRET}
       - PROFESSOR_WHITELIST=${PROFESSOR_WHITELIST}
       - ADMIN_WHITELIST=${ADMIN_WHITELIST}
-      - DEV_UTORID=${DEV_UTORID}
-      - DEV_NAME=${DEV_NAME}
-      - DEV_ROLE=${DEV_ROLE}
+      # DEV_* live in docker-compose.override.yml so production never sees them.
     depends_on:
       postgres:
         condition: service_healthy

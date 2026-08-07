@@ -1,0 +1,17 @@
+# Local development only.
+#
+# Compose loads this file automatically when no -f flags are passed:
+#   docker-compose up -d          -> docker-compose.yml + this file
+#
+# Production passes explicit -f flags, so this file is never read there:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# The DEV_* variables let you log in without Shibboleth. They must never
+# reach production, where the auth route would fall back to them whenever
+# the Shibboleth header is missing.
+services:
+  app:
+    environment:
+      - DEV_UTORID=${DEV_UTORID:-}
+      - DEV_NAME=${DEV_NAME:-}
+      - DEV_ROLE=${DEV_ROLE:-}
