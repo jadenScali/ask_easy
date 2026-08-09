@@ -10,6 +10,7 @@ import {
   Upload,
   LogOut,
   Unlink,
+  Undo2,
 } from "lucide-react";
 import { createPluginRegistration } from "@embedpdf/core";
 import { EmbedPDF } from "@embedpdf/core/react";
@@ -25,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useRoom } from "./RoomContext";
+import type { SlideContextSnapshot } from "./RoomContext";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -33,6 +35,8 @@ import { useRoom } from "./RoomContext";
 interface SlideViewerProps {
   isProfessor: boolean;
   onEndLecture?: () => void;
+  onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
+  slideNavTarget?: SlideContextSnapshot | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,12 +46,23 @@ interface SlideViewerProps {
 interface SlideUIProps {
   activeDocumentId: string | null;
   isProfessor: boolean;
+  slideSetId: string | null;
+  slideNavTarget?: SlideContextSnapshot | null;
+  onSlideContextChange?: (ctx: SlideContextSnapshot) => void;
   onReplaceSlides?: (file: File) => void;
   onEndLecture?: () => void;
 }
 
-function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture }: SlideUIProps) {
-  const { socket, sessionId } = useRoom();
+function SlideUI({
+  activeDocumentId,
+  isProfessor,
+  slideSetId,
+  slideNavTarget,
+  onSlideContextChange,
+  onReplaceSlides,
+  onEndLecture,
+}: SlideUIProps) {
+  const { socket, sessionId, slideReturnTarget, goBackToPreviousSlide } = useRoom();
   const router = useRouter();
 
   const [pageIndex, setPageIndex] = useState(0);
@@ -55,10 +70,23 @@ function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture 
   const [isSynced, setIsSynced] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
   const professorPageRef = useRef(0);
+  // Each navigateToQuestionSlide call creates a new target object; apply once per object
+  // so re-runs (e.g. isSynced → navigateToLocal identity) don't re-detach from live.
+  const appliedNavTargetRef = useRef<SlideContextSnapshot | null>(null);
 
   const { provides: docManager } = useDocumentManagerCapability();
   const activeDocument = docManager?.getActiveDocument();
   const pageCount = activeDocument?.pageCount || 0;
+
+  // Report the viewer's local page to the room container for question context
+  useEffect(() => {
+    if (!onSlideContextChange) return;
+    if (!slideSetId) {
+      onSlideContextChange({ slidePageIndex: null, slideSetId: null });
+      return;
+    }
+    onSlideContextChange({ slidePageIndex: pageIndex, slideSetId });
+  }, [pageIndex, slideSetId, onSlideContextChange]);
 
   // -------------------------------------------------------------------------
   // Socket — slide sync + live updates
@@ -126,16 +154,49 @@ function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture 
   // Navigation helpers
   // -------------------------------------------------------------------------
 
-  const navigateTo = (newIndex: number) => {
-    if (pageCount === 0) return;
-    const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
-    setPageIndex(clamped);
-    setInputValue(String(clamped + 1));
+  const navigateToLocal = useCallback(
+    (newIndex: number, options?: { detachFromProfessor?: boolean }) => {
+      if (pageCount === 0) return;
+      const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
+      if (options?.detachFromProfessor && !isProfessor && isSynced) {
+        setIsSynced(false);
+      }
+      setPageIndex(clamped);
+      setInputValue(String(clamped + 1));
+    },
+    [pageCount, isProfessor, isSynced]
+  );
 
-    if (isProfessor && socket) {
-      socket.emit("slide:change", { sessionId, pageIndex: clamped });
-    }
-  };
+  const navigateTo = useCallback(
+    (newIndex: number) => {
+      if (pageCount === 0) return;
+      const clamped = Math.max(0, Math.min(newIndex, pageCount - 1));
+      navigateToLocal(clamped);
+
+      if (isProfessor && socket) {
+        socket.emit("slide:change", { sessionId, pageIndex: clamped });
+      }
+    },
+    [pageCount, navigateToLocal, isProfessor, socket, sessionId]
+  );
+
+  // Question-badge jump: professor broadcasts; students detach from follow mode
+  useEffect(() => {
+    if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
+    if (slideNavTarget.slideSetId !== slideSetId) return;
+    if (pageCount === 0) return;
+    if (appliedNavTargetRef.current === slideNavTarget) return;
+
+    appliedNavTargetRef.current = slideNavTarget;
+    const targetPage = slideNavTarget.slidePageIndex;
+    queueMicrotask(() => {
+      if (isProfessor) {
+        navigateTo(targetPage);
+      } else {
+        navigateToLocal(targetPage, { detachFromProfessor: true });
+      }
+    });
+  }, [slideNavTarget, slideSetId, pageCount, navigateToLocal, navigateTo, isProfessor]);
 
   const handleInputCommit = (value: string) => {
     const num = parseInt(value, 10);
@@ -232,138 +293,153 @@ function SlideUI({ activeDocumentId, isProfessor, onReplaceSlides, onEndLecture 
       )}
 
       {/* Controls bar — always rendered */}
-      <div className="flex shrink-0 items-center justify-center gap-3 p-4 overflow-x-auto whitespace-nowrap">
-        {/* Professor: live indicator + nav */}
-        {isProfessor && (
-          <>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
-              <Radio className="w-4 h-4" />
-              Live
-            </div>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-stone-100 text-stone-700 rounded-md text-sm font-medium">
-              <Users className="w-4 h-4" />
-              {viewerCount}
-            </div>
-            {onReplaceSlides && (
-              <>
+      <div className="shrink-0 w-full overflow-x-auto overscroll-x-contain">
+        <div className="flex w-max min-w-full items-center justify-center gap-3 px-4 py-4 whitespace-nowrap">
+          {slideReturnTarget?.slidePageIndex != null && (
+            <>
+              <button
+                onClick={goBackToPreviousSlide}
+                className="flex shrink-0 items-center gap-1.5 h-9 px-3 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Back to slide {slideReturnTarget.slidePageIndex + 1}
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1 shrink-0" />
+            </>
+          )}
+
+          {/* Professor: live indicator + nav */}
+          {isProfessor && (
+            <>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
+                <Radio className="w-4 h-4" />
+                Live
+              </div>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-stone-100 text-stone-700 rounded-md text-sm font-medium">
+                <Users className="w-4 h-4" />
+                {viewerCount}
+              </div>
+              {onReplaceSlides && (
+                <>
+                  <input
+                    ref={replaceInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={handleReplaceFile}
+                  />
+                  <button
+                    onClick={() => replaceInputRef.current?.click()}
+                    className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    Replace
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleEndLecture}
+                className="flex items-center gap-1.5 h-9 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                End Lecture
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                 <input
-                  ref={replaceInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  className="hidden"
-                  onChange={handleReplaceFile}
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onBlur={() => handleInputCommit(inputValue)}
+                  onKeyDown={handleKeyDown}
+                  className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
                 />
-                <button
-                  onClick={() => replaceInputRef.current?.click()}
-                  className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  Replace
-                </button>
-              </>
-            )}
-            <button
-              onClick={handleEndLecture}
-              className="flex items-center gap-1.5 h-9 px-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              End Lecture
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={() => handleInputCommit(inputValue)}
-                onKeyDown={handleKeyDown}
-                className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
-              />
-              {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
-            </div>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo((pageIndex + 1) % pageCount)}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </>
-        )}
+                {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
+              </div>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo((pageIndex + 1) % pageCount)}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </>
+          )}
 
-        {/* Student: following mode */}
-        {!isProfessor && isSynced && (
-          <>
-            <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
-              <Navigation className="w-4 h-4" />
-              Following Professor
-            </div>
-            <button
-              onClick={handleToggleSync}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Unlink className="w-3.5 h-3.5" />
-              Browse Freely
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Exit
-            </button>
-          </>
-        )}
+          {/* Student: following mode */}
+          {!isProfessor && isSynced && (
+            <>
+              <div className="flex items-center gap-1.5 h-9 px-3 bg-green-100 text-green-700 rounded-md text-sm font-medium">
+                <Navigation className="w-4 h-4" />
+                Following Professor
+              </div>
+              <button
+                onClick={handleToggleSync}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Unlink className="w-3.5 h-3.5" />
+                Browse Freely
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Exit
+              </button>
+            </>
+          )}
 
-        {/* Student: free navigation mode */}
-        {!isProfessor && !isSynced && (
-          <>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={() => handleInputCommit(inputValue)}
-                onKeyDown={handleKeyDown}
-                className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
-              />
-              {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
-            </div>
-            <button
-              className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
-              onClick={() => navigateTo((pageIndex + 1) % pageCount)}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            <button
-              onClick={handleToggleSync}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Radio className="w-4 h-4" />
-              Back to Live
-            </button>
-            <div className="w-px h-6 bg-stone-200 mx-1" />
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Exit
-            </button>
-          </>
-        )}
+          {/* Student: free navigation mode */}
+          {!isProfessor && !isSynced && (
+            <>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo(pageIndex === 0 ? pageCount - 1 : pageIndex - 1)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onBlur={() => handleInputCommit(inputValue)}
+                  onKeyDown={handleKeyDown}
+                  className="w-10 h-9 px-1 text-center bg-white border border-stone-300 rounded focus-visible:ring-1 focus-visible:ring-stone-400 focus-visible:outline-none"
+                />
+                {pageCount > 0 && <span className="text-stone-500">/ {pageCount}</span>}
+              </div>
+              <button
+                className="w-9 h-9 flex items-center justify-center bg-stone-900 hover:bg-stone-700 text-stone-50 rounded-md transition-colors cursor-pointer"
+                onClick={() => navigateTo((pageIndex + 1) % pageCount)}
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleToggleSync}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Radio className="w-4 h-4" />
+                Back to Live
+              </button>
+              <div className="w-px h-6 bg-stone-200 mx-1" />
+              <button
+                onClick={() => router.push("/")}
+                className="flex items-center gap-1.5 h-9 px-3 bg-stone-200 hover:bg-red-100 hover:text-red-700 text-stone-700 rounded-md text-sm font-medium transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Exit
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -465,11 +541,17 @@ function UploadZone({ onUpload, isUploading, uploadError, onEndLecture }: Upload
 // Public component
 // ---------------------------------------------------------------------------
 
-export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerProps) {
+export default function SlideViewer({
+  isProfessor,
+  onEndLecture,
+  onSlideContextChange,
+  slideNavTarget,
+}: SlideViewerProps) {
   const { engine, isLoading: engineLoading } = usePdfiumEngine();
   const { sessionId, socket } = useRoom();
 
   const [slideUrl, setSlideUrl] = useState<string | null>(null);
+  const [activeSlideSetId, setActiveSlideSetId] = useState<string | null>(null);
   const [isLoadingSlides, setIsLoadingSlides] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -481,6 +563,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
   const loadSlides = useCallback(
     async (slideSetId?: string) => {
       if (slideSetId) {
+        setActiveSlideSetId(slideSetId);
         setSlideUrl(`/api/sessions/${sessionId}/slides/${slideSetId}/file`);
         setIsLoadingSlides(false);
         return;
@@ -491,7 +574,10 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
         const data = await res.json();
         if (data.slideSets?.length > 0) {
           const latest = data.slideSets[0];
+          setActiveSlideSetId(latest.id);
           setSlideUrl(`/api/sessions/${sessionId}/slides/${latest.id}/file`);
+        } else {
+          setActiveSlideSetId(null);
         }
       } finally {
         setIsLoadingSlides(false);
@@ -514,6 +600,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
     if (!socket) return;
 
     const onSlidesAvailable = ({ slideSetId }: { slideSetId: string }) => {
+      setActiveSlideSetId(slideSetId);
       setSlideUrl(`/api/sessions/${sessionId}/slides/${slideSetId}/file`);
     };
 
@@ -522,6 +609,22 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
       socket.off("slides:available", onSlidesAvailable);
     };
   }, [socket, sessionId]);
+
+  // Clear slide context when no deck is loaded
+  useEffect(() => {
+    if (!slideUrl) {
+      onSlideContextChange?.({ slidePageIndex: null, slideSetId: null });
+    }
+  }, [slideUrl, onSlideContextChange]);
+
+  // Navigate to a question's slide — switch decks when needed
+  useEffect(() => {
+    if (slideNavTarget?.slidePageIndex == null || !slideNavTarget.slideSetId) return;
+
+    if (slideNavTarget.slideSetId !== activeSlideSetId) {
+      loadSlides(slideNavTarget.slideSetId);
+    }
+  }, [slideNavTarget, activeSlideSetId, loadSlides]);
 
   // -------------------------------------------------------------------------
   // Upload handler
@@ -548,6 +651,7 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
         }
 
         const newUrl = `/api/sessions/${sessionId}/slides/${data.slideSetId}/file`;
+        setActiveSlideSetId(data.slideSetId);
         setSlideUrl(newUrl);
 
         if (socket?.connected) {
@@ -636,6 +740,9 @@ export default function SlideViewer({ isProfessor, onEndLecture }: SlideViewerPr
           <SlideUI
             activeDocumentId={activeDocumentId}
             isProfessor={isProfessor}
+            slideSetId={activeSlideSetId}
+            slideNavTarget={slideNavTarget}
+            onSlideContextChange={onSlideContextChange}
             onReplaceSlides={isProfessor ? handleUpload : undefined}
             onEndLecture={isProfessor ? onEndLecture : undefined}
           />

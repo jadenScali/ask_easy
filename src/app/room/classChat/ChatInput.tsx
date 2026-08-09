@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Ghost, User, Send } from "lucide-react";
+import { Ghost, User, Send, Presentation } from "lucide-react";
+import { useSlideContext } from "../RoomContext";
 
 const MIN_LENGTH = 5;
 
 interface ChatInputProps {
-  onSubmit: (content: string, isAnonymous: boolean) => void;
+  onSubmit: (content: string, isAnonymous: boolean, includeSlideContext: boolean) => void;
   disabled?: boolean;
   serverError?: string | null;
   onClearError?: () => void;
   isAnonymous: boolean;
   onAnonymousChange: (val: boolean) => void;
+  includeSlideContext: boolean;
+  onIncludeSlideContextChange: (val: boolean) => void;
 }
 
 export default function ChatInput({
@@ -22,11 +25,16 @@ export default function ChatInput({
   onClearError,
   isAnonymous,
   onAnonymousChange,
+  includeSlideContext,
+  onIncludeSlideContextChange,
 }: ChatInputProps) {
+  const slideContext = useSlideContext();
   const [content, setContent] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
   const error = serverError ?? localError;
+  const slideContextAvailable =
+    slideContext.slidePageIndex !== null && slideContext.slideSetId !== null;
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
@@ -43,7 +51,7 @@ export default function ChatInput({
       return;
     }
     setLocalError(null);
-    onSubmit(trimmed, isAnonymous);
+    onSubmit(trimmed, isAnonymous, includeSlideContext && slideContextAvailable);
     setContent("");
   };
 
@@ -71,7 +79,7 @@ export default function ChatInput({
                 error ? "border-red-400 bg-red-50" : ""
               }`}
             />
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-1">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -94,6 +102,25 @@ export default function ChatInput({
                     </>
                   )}
                 </button>
+                {slideContextAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => onIncludeSlideContextChange(!includeSlideContext)}
+                    className={`flex shrink-0 items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                      includeSlideContext
+                        ? "bg-stone-800 hover:bg-stone-700 text-stone-50"
+                        : "bg-stone-200 hover:bg-stone-300 text-stone-700"
+                    }`}
+                    title={
+                      includeSlideContext
+                        ? "Include current slide with question"
+                        : "Don't include slide context"
+                    }
+                  >
+                    <Presentation className="w-4 h-4" />
+                    {includeSlideContext ? `Slide ${slideContext.slidePageIndex! + 1}` : "No slide"}
+                  </button>
+                )}
                 {error && <p className="text-xs text-red-500">{error}</p>}
               </div>
               <button

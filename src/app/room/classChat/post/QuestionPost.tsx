@@ -3,9 +3,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageCircle, CheckCircle2, Undo2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  MessageCircle,
+  CheckCircle2,
+  Undo2,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Presentation,
+} from "lucide-react";
 import { Question, Post } from "@/utils/types";
 import { UpvoteButton, renderUsername } from "./PostUtils";
+import { useRoom } from "../../RoomContext";
 
 // ---------------------------------------------------------------------------
 // Reply composer
@@ -131,6 +140,7 @@ export default function QuestionPost({
   const [isReplying, setIsReplying] = useState(false);
   const [threadState, setThreadState] = useState<ThreadState>("default");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { navigateToQuestionSlide } = useRoom();
 
   /** Parent (socket/API) is the source of truth; optimistic updates flow through `post`. */
   const resolved = post.isResolved;
@@ -176,6 +186,23 @@ export default function QuestionPost({
           />
           {renderUsername(post.user, post.isAnonymous)}
           <span>{post.timestamp}</span>
+
+          {post.slidePageIndex != null && post.slideSetId && (
+            <button
+              type="button"
+              onClick={() =>
+                navigateToQuestionSlide({
+                  slidePageIndex: post.slidePageIndex!,
+                  slideSetId: post.slideSetId!,
+                })
+              }
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-medium hover:bg-stone-200 hover:text-stone-800 transition-colors cursor-pointer"
+              title="Go to this slide"
+            >
+              <Presentation className="h-3 w-3" />
+              Slide {post.slidePageIndex + 1}
+            </button>
+          )}
 
           {hasAnyReplies && (
             <ThreadToggle

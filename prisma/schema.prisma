@@ -122,34 +122,39 @@ model SlideSet {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  session  Session @relation(fields: [sessionId], references: [id])
-  uploader User    @relation("SlideSetUploader", fields: [uploadedBy], references: [id])
+  session   Session    @relation(fields: [sessionId], references: [id])
+  uploader  User       @relation("SlideSetUploader", fields: [uploadedBy], references: [id])
+  questions Question[]
 
   @@index([sessionId])
   @@index([uploadedBy])
 }
 
 model Question {
-  id          String         @id @default(cuid())
-  sessionId   String
-  authorId    String?
-  content     String
-  isAnonymous Boolean        @default(false)
-  visibility  Visibility     @default(PUBLIC)
-  status      QuestionStatus @default(OPEN)
-  upvoteCount Int            @default(0)
-  createdAt   DateTime       @default(now())
+  id             String         @id @default(cuid())
+  sessionId      String
+  authorId       String?
+  content        String
+  isAnonymous    Boolean        @default(false)
+  visibility     Visibility     @default(PUBLIC)
+  status         QuestionStatus @default(OPEN)
+  upvoteCount    Int            @default(0)
+  slidePageIndex Int?
+  slideSetId     String?
+  createdAt      DateTime       @default(now())
 
-  session Session          @relation(fields: [sessionId], references: [id])
-  author  User?            @relation(fields: [authorId], references: [id])
-  answers Answer[]
-  upvotes QuestionUpvote[]
+  session  Session          @relation(fields: [sessionId], references: [id])
+  author   User?            @relation(fields: [authorId], references: [id])
+  slideSet SlideSet?        @relation(fields: [slideSetId], references: [id], onDelete: SetNull)
+  answers  Answer[]
+  upvotes  QuestionUpvote[]
 
   @@index([sessionId])
   @@index([authorId])
   @@index([status])
   @@index([visibility])
   @@index([createdAt])
+  @@index([slideSetId])
 }
 
 model Answer {
