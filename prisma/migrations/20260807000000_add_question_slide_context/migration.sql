@@ -1,7 +1,4 @@
 -- AlterTable
-ALTER TABLE "Session" ADD COLUMN "lastActivityAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
-
--- AlterTable
 ALTER TABLE "Question" ADD COLUMN "slidePageIndex" INTEGER;
 ALTER TABLE "Question" ADD COLUMN "slideSetId" TEXT;
 
