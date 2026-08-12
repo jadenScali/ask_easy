@@ -27,6 +27,8 @@ interface APIQuestion {
   upvoteCount: number;
   answerCount: number;
   createdAt: string;
+  slidePageIndex?: number | null;
+  slideSetId?: string | null;
   author: { id: string; utorid: string; name: string; role: Role } | null;
 }
 
@@ -96,6 +98,8 @@ function apiQuestionToPost(q: APIQuestion, answers: APIAnswer[]): Question {
     isAnonymous: q.isAnonymous,
     replies: answers.map((a) => apiAnswerToPost(a)),
     visibility: q.visibility,
+    slidePageIndex: q.slidePageIndex ?? null,
+    slideSetId: q.slideSetId ?? null,
   };
 }
 
@@ -109,12 +113,13 @@ interface ClassChatProps {
 }
 
 export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
-  const { socket, sessionId, userId, role } = useRoom();
+  const { socket, sessionId, userId, role, slideContextRef } = useRoom();
 
   const [commentView, setCommentView] = useState<"all" | "unresolved" | "resolved">("all");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answerMode, setAnswerMode] = useState<"all" | "instructors_only">("instructors_only");
   const [globalIsAnonymous, setGlobalIsAnonymous] = useState(false);
+  const [includeSlideContext, setIncludeSlideContext] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,6 +203,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       authorId?: string | null;
       authorName?: string | null;
       authorUtorid?: string | null;
+      slidePageIndex?: number | null;
+      slideSetId?: string | null;
     }) => {
       const user =
         payload.isAnonymous || !payload.authorName
@@ -221,6 +228,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         isAnonymous: payload.isAnonymous,
         replies: [],
         visibility: payload.visibility as "PUBLIC" | "INSTRUCTOR_ONLY",
+        slidePageIndex: payload.slidePageIndex ?? null,
+        slideSetId: payload.slideSetId ?? null,
       };
 
       setQuestions((prev) => [...prev, newQuestion]);
@@ -452,10 +461,29 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const canAnswerGlobal = role === "TA" || role === "PROFESSOR" || answerMode === "all";
   const isInstructor = role === "TA" || role === "PROFESSOR";
 
-  const handleSubmitQuestion = (content: string, isAnonymous: boolean) => {
+  const handleSubmitQuestion = (
+    content: string,
+    isAnonymous: boolean,
+    attachSlideContext: boolean
+  ) => {
     if (!socket) return;
     setQuestionError(null);
-    socket.emit("question:create", { sessionId, content, isAnonymous });
+
+    const { slidePageIndex, slideSetId } = slideContextRef.current;
+    const payload: {
+      sessionId: string;
+      content: string;
+      isAnonymous: boolean;
+      slidePageIndex?: number;
+      slideSetId?: string;
+    } = { sessionId, content, isAnonymous };
+
+    if (attachSlideContext && slidePageIndex !== null && slideSetId !== null) {
+      payload.slidePageIndex = slidePageIndex;
+      payload.slideSetId = slideSetId;
+    }
+
+    socket.emit("question:create", payload);
   };
 
   const handleUpvote = (questionId: string) => {
@@ -656,6 +684,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         onClearError={() => setQuestionError(null)}
         isAnonymous={globalIsAnonymous}
         onAnonymousChange={setGlobalIsAnonymous}
+        includeSlideContext={includeSlideContext}
+        onIncludeSlideContextChange={setIncludeSlideContext}
       />
     </div>
   );

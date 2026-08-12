@@ -11,6 +11,7 @@ import {
   validateQuestionContent,
   validateVisibility,
   validateSessionForQuestions,
+  validateQuestionSlideContext,
 } from "@/lib/questionValidation";
 import { getSessionMembership } from "@/lib/sessionService";
 
@@ -26,6 +27,8 @@ interface QuestionCreateBody {
   content: string;
   visibility?: "PUBLIC" | "INSTRUCTOR_ONLY";
   isAnonymous?: boolean;
+  slidePageIndex?: number;
+  slideSetId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +119,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       hasAcceptedAnswer: q.answers.length > 0,
       acceptedAnswerId: q.answers[0]?.id ?? null,
       createdAt: q.createdAt,
+      slidePageIndex: q.slidePageIndex,
+      slideSetId: q.slideSetId,
       author: q.isAnonymous && !canRevealAnonymous ? null : q.author,
     }));
 
@@ -157,6 +162,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  *   - authorId: string (required)
  *   - visibility: "PUBLIC" | "INSTRUCTOR_ONLY" (optional, defaults to PUBLIC)
  *   - isAnonymous: boolean (optional, defaults to false)
+ *   - slidePageIndex: number (optional, 0-based page the asker was viewing)
+ *   - slideSetId: string (optional, must belong to the session)
  *
  * Validations:
  *   1. Content length bounds
@@ -209,6 +216,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: sessionValidation.error }, { status: statusCode });
     }
 
+    // 6b. Validate slide context — reject with 400 when provided but invalid
+    const slideValidation = await validateQuestionSlideContext(
+      sessionId,
+      body.slidePageIndex,
+      body.slideSetId
+    );
+    const hasSlideInput = body.slidePageIndex != null || body.slideSetId != null;
+    if (!slideValidation.valid && hasSlideInput) {
+      return NextResponse.json({ error: slideValidation.error }, { status: 400 });
+    }
+    const slidePageIndex = slideValidation.slidePageIndex;
+    const slideSetId = slideValidation.slideSetId;
+
     // 7. Create the question and record activity on the session atomically
     const [question] = await prisma.$transaction([
       prisma.question.create({
@@ -218,6 +238,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           content: body.content.trim(),
           visibility: body.visibility ?? "PUBLIC",
           isAnonymous: body.isAnonymous ?? false,
+          slidePageIndex,
+          slideSetId,
         },
         include: {
           author: {
@@ -244,6 +266,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         isAnonymous: question.isAnonymous,
         upvoteCount: question.upvoteCount,
         createdAt: question.createdAt,
+        slidePageIndex: question.slidePageIndex,
+        slideSetId: question.slideSetId,
         author: question.isAnonymous ? null : question.author,
       },
       { status: 201 }
