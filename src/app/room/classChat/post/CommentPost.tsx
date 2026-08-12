@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Comment } from "@/utils/types";
 import { renderAvatar, UpvoteButton, renderUsername } from "./PostUtils";
+import { HintTooltip } from "@/components/ui/tooltip";
 
 interface CommentPostProps {
   post: Comment;
@@ -74,15 +75,16 @@ export default function CommentPost({ post, onUpvote, onDelete }: CommentPostPro
                 </button>
               </div>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmingDelete(true)}
-                title="Delete answer"
-                className="h-7 px-2 gap-1 text-xs text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <HintTooltip label="Delete answer">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="h-7 px-2 gap-1 text-xs text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </HintTooltip>
             ))}
         </div>
       </div>

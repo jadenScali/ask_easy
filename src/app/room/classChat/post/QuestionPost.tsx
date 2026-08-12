@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle, CheckCircle2, Undo2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Question, Post } from "@/utils/types";
 import { UpvoteButton, renderUsername } from "./PostUtils";
+import { HintTooltip } from "@/components/ui/tooltip";
 
 // ---------------------------------------------------------------------------
 // Reply composer
@@ -241,40 +242,43 @@ export default function QuestionPost({
               )}
 
               {onResolve && !resolved && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs gap-1 text-stone-400 hover:text-green-600 hover:bg-green-50"
-                  onClick={handleResolve}
-                  title="Mark as resolved"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                </Button>
+                <HintTooltip label="Mark as resolved">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-stone-400 hover:text-green-600 hover:bg-green-50"
+                    onClick={handleResolve}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                  </Button>
+                </HintTooltip>
               )}
 
               {onUnresolve && resolved && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="group/unresolve h-7 px-2 text-xs gap-1 text-green-600 hover:text-amber-600 hover:bg-amber-50"
-                  onClick={() => onUnresolve()}
-                  title="Unresolve"
-                >
-                  <CheckCircle2 className="h-4 w-4 group-hover/unresolve:hidden" />
-                  <Undo2 className="h-4 w-4 hidden group-hover/unresolve:block" />
-                </Button>
+                <HintTooltip label="Unresolve">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="group/unresolve h-7 px-2 text-xs gap-1 text-green-600 hover:text-amber-600 hover:bg-amber-50"
+                    onClick={() => onUnresolve()}
+                  >
+                    <CheckCircle2 className="h-4 w-4 group-hover/unresolve:hidden" />
+                    <Undo2 className="h-4 w-4 hidden group-hover/unresolve:block" />
+                  </Button>
+                </HintTooltip>
               )}
 
               {onDelete && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs gap-1 text-stone-400 hover:text-stone-900 hover:bg-stone-200/60"
-                  onClick={() => setConfirmingDelete(true)}
-                  title="Delete question"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <HintTooltip label="Delete question">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1 text-stone-400 hover:text-stone-900 hover:bg-stone-200/60"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </HintTooltip>
               )}
             </>
           )}

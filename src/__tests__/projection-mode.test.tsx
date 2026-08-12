@@ -38,8 +38,28 @@ function makeQuestion(overrides: Partial<Question> = {}): Question {
 }
 
 describe("stripAuthors", () => {
-  it("removes the author from questions and all replies", () => {
+  it("keeps authors of publicly-attributed questions and replies", () => {
     const stripped = stripAuthors([makeQuestion()]);
+    expect(stripped[0].user?.username).toBe("Student One");
+    expect(stripped[0].replies[0].user?.username).toBe("TA One");
+  });
+
+  it("hides authors of anonymous questions and replies", () => {
+    const anon = makeQuestion({
+      isAnonymous: true,
+      replies: [
+        {
+          id: "a1",
+          type: "comment",
+          user: { id: "u2", utorid: "s2", username: "Student Two", pfp: "", role: "STUDENT" },
+          timestamp: "10:01 AM",
+          content: "me too",
+          upvotes: 0,
+          isAnonymous: true,
+        },
+      ],
+    });
+    const stripped = stripAuthors([anon]);
     expect(stripped[0].user).toBeNull();
     expect(stripped[0].replies[0].user).toBeNull();
   });
@@ -107,12 +127,17 @@ describe("ChatHeader projection mode toggle", () => {
     expect(screen.queryByLabelText(TOGGLE_LABEL)).toBeNull();
   });
 
-  it("reflects the projection state in the tooltip", () => {
+  it("reflects the projection state with the eye icon", () => {
     renderHeader("PROFESSOR", true);
-    expect(screen.getByLabelText(TOGGLE_LABEL).getAttribute("title")).toContain("Names hidden");
+    expect(
+      screen.getByLabelText(TOGGLE_LABEL).querySelector("svg")?.getAttribute("class")
+    ).toContain("lucide-eye-off");
     cleanup();
     renderHeader("PROFESSOR", false);
-    expect(screen.getByLabelText(TOGGLE_LABEL).getAttribute("title")).toContain("Names visible");
+    const cls =
+      screen.getByLabelText(TOGGLE_LABEL).querySelector("svg")?.getAttribute("class") ?? "";
+    expect(cls).toContain("lucide-eye");
+    expect(cls).not.toContain("lucide-eye-off");
   });
 
   it("calls the toggle callback on click", () => {

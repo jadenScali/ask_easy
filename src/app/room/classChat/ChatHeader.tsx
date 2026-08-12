@@ -13,6 +13,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import ManageTAsModal from "./ManageTAsModal";
+import { HintTooltip } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { SlideUpdateContext } from "../SlideUpdateContext";
 import type { Role } from "@/utils/types";
@@ -126,78 +127,79 @@ export default function ChatHeader({
               </div>
 
               <div className="flex items-center gap-2 shrink-0 animate-in fade-in duration-200">
-                <button
-                  onClick={() => setIsSearchExpanded(true)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors ${
-                    searchQuery
-                      ? "bg-stone-800 text-stone-50 hover:bg-stone-700"
-                      : "bg-stone-200 text-stone-600 hover:bg-stone-300"
-                  }`}
-                  aria-label="Search"
-                >
-                  <Search className="w-4 h-4" />
-                  {searchQuery && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-green-500" />
-                  )}
-                </button>
-
-                {/* Projection mode (hide names) toggle — instructors only */}
-                {(role === "PROFESSOR" || role === "TA") && (
+                <HintTooltip label="Search">
                   <button
-                    onClick={onToggleProjectionMode}
-                    aria-label="Toggle name visibility"
-                    title={
-                      projectionMode
-                        ? "Names hidden (safe to project) — click to show names"
-                        : "Names visible — click to hide names for projecting"
-                    }
-                    className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors shrink-0 cursor-pointer ${
-                      projectionMode
+                    onClick={() => setIsSearchExpanded(true)}
+                    className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors ${
+                      searchQuery
                         ? "bg-stone-800 text-stone-50 hover:bg-stone-700"
                         : "bg-stone-200 text-stone-600 hover:bg-stone-300"
                     }`}
+                    aria-label="Search"
                   >
-                    {projectionMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <Search className="w-4 h-4" />
+                    {searchQuery && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-green-500" />
+                    )}
                   </button>
+                </HintTooltip>
+
+                {/* Projection mode (hide names) toggle — instructors only */}
+                {(role === "PROFESSOR" || role === "TA") && (
+                  <HintTooltip label={projectionMode ? "Show names" : "Hide names"}>
+                    <button
+                      onClick={onToggleProjectionMode}
+                      aria-label="Toggle name visibility"
+                      className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors shrink-0 cursor-pointer ${
+                        projectionMode
+                          ? "bg-stone-800 text-stone-50 hover:bg-stone-700"
+                          : "bg-stone-200 text-stone-600 hover:bg-stone-300"
+                      }`}
+                    >
+                      {projectionMode ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </HintTooltip>
                 )}
 
                 {/* Answer mode toggle — professors only */}
                 {role === "PROFESSOR" && (
-                  <button
-                    onClick={onToggleAnswerMode}
-                    title={
-                      answerMode === "all"
-                        ? "Anyone can answer — click to restrict to TAs/Professors"
-                        : "TAs/Professors only — click to allow everyone"
-                    }
-                    className={`flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium transition-colors shrink-0 cursor-pointer ${
-                      answerMode === "all"
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-amber-100 text-amber-700 hover:bg-amber-200"
-                    }`}
-                  >
-                    {answerMode === "all" ? (
-                      <>
-                        <Users className="w-3.5 h-3.5" />
-                        Anyone
-                      </>
-                    ) : (
-                      <>
-                        <GraduationCap className="w-3.5 h-3.5" />
-                        TAs only
-                      </>
-                    )}
-                  </button>
+                  <HintTooltip label={answerMode === "all" ? "Restrict to TAs" : "Allow everyone"}>
+                    <button
+                      onClick={onToggleAnswerMode}
+                      className={`flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium transition-colors shrink-0 cursor-pointer ${
+                        answerMode === "all"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+                      }`}
+                    >
+                      {answerMode === "all" ? (
+                        <>
+                          <Users className="w-3.5 h-3.5" />
+                          Anyone
+                        </>
+                      ) : (
+                        <>
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          TAs only
+                        </>
+                      )}
+                    </button>
+                  </HintTooltip>
                 )}
                 {role === "PROFESSOR" && (
-                  <button
-                    onClick={() => setShowTAModal(true)}
-                    title="Manage TAs"
-                    className="w-9 h-9 flex items-center justify-center rounded-md text-stone-600 bg-stone-200 hover:bg-stone-300 transition-colors shrink-0"
-                    aria-label="Manage TAs"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                  </button>
+                  <HintTooltip label="Manage TAs">
+                    <button
+                      onClick={() => setShowTAModal(true)}
+                      className="w-9 h-9 flex items-center justify-center rounded-md text-stone-600 bg-stone-200 hover:bg-stone-300 transition-colors shrink-0"
+                      aria-label="Manage TAs"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </button>
+                  </HintTooltip>
                 )}
               </div>
             </>

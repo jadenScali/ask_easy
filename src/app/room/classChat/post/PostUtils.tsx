@@ -97,15 +97,15 @@ export const bestToTop = (replies: Post[] | undefined) => {
 };
 
 /**
- * Strips author identity from questions and their replies so posts render
- * exactly like anonymous ones (no name, utorid, role icon, or avatar
- * initials). Used by the instructor's projection mode — the underlying state
- * keeps the real authors, so flipping the toggle back restores them.
+ * Hides the author of posts that were submitted anonymously (including
+ * anonymous authors the instructor revealed) so they can't be projected.
+ * Publicly-attributed posts keep their author. Used by projection mode — the
+ * underlying state is untouched, so flipping the toggle back restores names.
  */
 export function stripAuthors(questions: Question[]): Question[] {
   return questions.map((q) => ({
     ...q,
-    user: null,
-    replies: q.replies.map((r) => ({ ...r, user: null })),
+    user: q.isAnonymous ? null : q.user,
+    replies: q.replies.map((r) => (r.isAnonymous ? { ...r, user: null } : r)),
   }));
 }
