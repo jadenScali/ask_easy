@@ -13,7 +13,7 @@ export const STUDENT_ONBOARDING_STEPS: OnboardingStep[] = [
       "Post a question and get answered in real-time during lectures.",
       "TAs reply directly, so you get answers without disrupting the lecture.",
     ],
-    image: "/images/onboarding/onboard-answers.jpg",
+    image: "/images/onboarding/question.png",
     altText: "Live Q&A feed with questions and replies",
   },
   {
@@ -23,7 +23,7 @@ export const STUDENT_ONBOARDING_STEPS: OnboardingStep[] = [
       "Everyone can mark their own question as resolved.",
       "Only TAs and professors can mark other people's questions as resolved.",
     ],
-    image: "/images/onboarding/onboard-upvotes.jpg",
+    image: "/images/onboarding/upvote-rank.png",
     altText: "Questions ranked by upvotes with resolution filters",
   },
   {
@@ -32,7 +32,7 @@ export const STUDENT_ONBOARDING_STEPS: OnboardingStep[] = [
       "Toggle Anonymous Mode to hide your name.",
       "TAs and professors can still find you if misused.",
     ],
-    image: "/images/onboarding/onboard-anon.jpg",
+    image: "/images/onboarding/anon.png",
     altText: "Anonymous mode toggle hiding your identity",
   },
 ];
