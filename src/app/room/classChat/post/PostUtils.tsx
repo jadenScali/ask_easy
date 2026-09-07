@@ -73,7 +73,10 @@ export function UpvoteButton({ initialVotes, controlledVotes, onUpvote }: Upvote
 }
 
 export function renderRoleIcon(user: User) {
-  if (user.role === "TA" || user.role === "PROFESSOR") {
+  if (user.role === "PROFESSOR") {
+    return <GraduationCap className="h-4 w-4 text-stone-900 fill-current" />;
+  }
+  if (user.role === "TA") {
     return <GraduationCap className="h-4 w-4 text-stone-900" />;
   }
   return null;
