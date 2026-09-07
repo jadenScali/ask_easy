@@ -31,7 +31,7 @@ export default function CommentPost({ post, onUpvote, onDelete }: CommentPostPro
     <div className="flex gap-2 sm:gap-3 mt-4">
       <div className="flex flex-col items-center gap-1">
         {renderAvatar(post, revealed)}
-        <div className="h-full w-px bg-border my-2" />
+        <div className="h-full w-px bg-stone-200/60 my-2" />
       </div>
 
       <div className="flex-1 min-w-0 space-y-2">

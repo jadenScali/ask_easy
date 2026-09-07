@@ -322,7 +322,7 @@ export default function QuestionPost({
 
       {/* Thread */}
       {showThread && (
-        <div className="mt-1 pl-2 sm:pl-4 border-l-2 border-stone-300 space-y-1">
+        <div className="mt-1 pl-2 sm:pl-4 border-l border-stone-200/60 space-y-1">
           {isReplying && (
             <ReplySection
               canAnswer={canAnswer}
