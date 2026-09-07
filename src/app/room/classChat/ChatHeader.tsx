@@ -93,7 +93,7 @@ export default function ChatHeader({
           }
         : {
             Icon: BellRing,
-            title: "Browser notifications on",
+            title: "Browser and beep notifications on",
             className: "bg-amber-100 text-amber-700 hover:bg-amber-200",
           };
 
@@ -169,6 +169,7 @@ export default function ChatHeader({
                 </button>
                 <button
                   onClick={() => setIsSearchExpanded(true)}
+                  title="Search questions and answers"
                   className={`w-9 h-9 flex items-center justify-center rounded-md transition-colors ${
                     searchQuery
                       ? "bg-stone-800 text-stone-50 hover:bg-stone-700"
@@ -188,8 +189,8 @@ export default function ChatHeader({
                     onClick={onToggleAnswerMode}
                     title={
                       answerMode === "all"
-                        ? "Anyone can answer — click to restrict to TAs/Professors"
-                        : "TAs/Professors only — click to allow everyone"
+                        ? "Anyone can answer - click to restrict to TAs/Professors"
+                        : "TAs/Professors only - click to allow everyone"
                     }
                     className={`flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium transition-colors shrink-0 cursor-pointer ${
                       answerMode === "all"
