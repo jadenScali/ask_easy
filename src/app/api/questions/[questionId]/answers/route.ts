@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   validateAnswerContent,
   checkAnswerRateLimit,
+  answerRetryAfter,
   validateQuestionForAnswers,
 } from "@/lib/answerValidation";
 import { getQuestionAnswers } from "@/services/answerService";
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  *   1. Authenticated user from session cookie
  *   2. Question exists and belongs to an active session
  *   3. Content length bounds
- *   4. Rate limit (15 answers per 60 seconds per user)
+ *   4. Rate limit (5 answers per 10 seconds per user)
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
@@ -152,9 +153,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const isRateLimited = await checkAnswerRateLimit(user.userId);
     if (isRateLimited) {
+      const retryAfter = await answerRetryAfter(user.userId);
       return NextResponse.json(
-        { error: "Rate limit exceeded. Please wait before submitting another answer." },
-        { status: 429 }
+        { error: "Too many answers.", retryAfterSeconds: retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
       );
     }
 

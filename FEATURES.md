@@ -185,14 +185,17 @@ All rate limits are per-user, enforced via Redis counters.
 
 | Action                     | Limit | Window |
 | -------------------------- | ----- | ------ |
-| Question creation          | 10    | 60 s   |
-| Question upvote            | 30    | 60 s   |
-| Question resolve/unresolve | 20    | 60 s   |
-| Answer creation            | 15    | 60 s   |
-| Answer upvote              | 30    | 60 s   |
+| Question creation          | 2     | 10 s   |
+| Question upvote            | 10    | 10 s   |
+| Question resolve/unresolve | 10    | 10 s   |
+| Answer creation            | 5     | 10 s   |
+| Answer upvote              | 10    | 10 s   |
 | Join code lookup           | 30    | 60 s   |
 | Join code registration     | 10    | 60 s   |
 | Join code regeneration     | 5     | 1 hour |
+
+Upvotes share one counter across questions and answers, as do resolve and unresolve.
+A refused action returns a short message the client shows as a toast.
 
 If Redis is unavailable, rate limiting fails closed (blocks all requests).
 

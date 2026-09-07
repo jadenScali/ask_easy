@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 import {
   validateQuestionContent,
   validateVisibility,
+  checkQuestionRateLimit,
   checkUpvoteRateLimit,
   checkResolveRateLimit,
+  questionRetryAfter,
+  upvoteRetryAfter,
+  resolveRetryAfter,
   validateSessionForQuestions,
   validateQuestionSlideContext,
 } from "@/lib/questionValidation";
@@ -98,7 +102,7 @@ export function broadcastQuestion(
  *   2. Payload shape — must be a non-null object
  *   3. Content       — length bounds via validateQuestionContent
  *   4. Visibility    — must be a recognised Visibility value if provided
- *   5. Rate limit    — 10 questions / 60 s per user, enforced in Redis
+ *   5. Rate limit    — 2 questions / 10 s per user per session, enforced in Redis
  *   6. Session       — must exist in the DB and have isSubmissionsEnabled === true
  *   7. Persist       — question written to the database (authorId always stored)
  *   8. Broadcast     — emitted to the correct room; authorId stripped when anonymous
@@ -141,7 +145,17 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
         return;
       }
 
-      // 5. Session validation
+      // 5. Rate limit — counter is per user per session
+      if (await checkQuestionRateLimit(userId, payload.sessionId)) {
+        socket.emit("question:error", {
+          message: "Too many questions.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await questionRetryAfter(userId, payload.sessionId),
+        });
+        return;
+      }
+
+      // 6. Session validation
       const sessionValidation = await validateSessionForQuestions(payload.sessionId);
       if (!sessionValidation.valid) {
         console.log("[QuestionHandler] Rejected: session validation -", sessionValidation.error);
@@ -149,7 +163,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
         return;
       }
 
-      // 5b. Slide context validation — invalid context is dropped; question still saves
+      // 6a. Slide context validation — invalid context is dropped; question still saves
       const slideValidation = await validateQuestionSlideContext(
         payload.sessionId,
         payload.slidePageIndex,
@@ -164,7 +178,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const slidePageIndex = slideValidation.valid ? slideValidation.slidePageIndex : null;
       const slideSetId = slideValidation.valid ? slideValidation.slideSetId : null;
 
-      // 5a. Enrollment check — any non-PROFESSOR must be enrolled in the session's course
+      // 6b. Enrollment check — any non-PROFESSOR must be enrolled in the session's course
       const sessionForEnrollment = await prisma.session.findUnique({
         where: { id: payload.sessionId },
         select: { courseId: true },
@@ -182,7 +196,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
         authorEnrollmentRole = enrollment.role;
       }
 
-      // 6. Persist to database (include author for display name in broadcast)
+      // 7. Persist to database (include author for display name in broadcast)
       //    authorId is always stored for audit purposes, but stripped
       //    from the broadcast payload in step 8 when isAnonymous is true.
       const question = await prisma.question.create({
@@ -251,7 +265,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — 30 upvotes / 60 s per user, enforced in Redis
+ *   3. Rate limit    — 10 upvotes / 10 s per user, enforced in Redis
  *   4. Toggle        — create or delete upvote + update count in a transaction
  *   5. Broadcast     — emit updated count to the session room
  */
@@ -281,7 +295,9 @@ export function handleQuestionUpvote(socket: Socket, io: Server): void {
       const isRateLimited = await checkUpvoteRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are upvoting too quickly. Please wait before trying again.",
+          message: "Too many upvotes.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await upvoteRetryAfter(userId),
         });
         return;
       }
@@ -377,7 +393,7 @@ function checkResolvePermission(
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — 20 resolves / 60 s per user, enforced in Redis
+ *   3. Rate limit    — 10 resolves / 10 s per user, enforced in Redis
  *   4. Question      — must exist in the DB and not already be resolved
  *   5. Permission    — TA/PROFESSOR can resolve any; STUDENT only their own
  *   6. Persist       — question status updated to RESOLVED
@@ -409,7 +425,9 @@ export function handleQuestionResolve(socket: Socket, io: Server): void {
       const isRateLimited = await checkResolveRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are resolving too quickly. Please wait before trying again.",
+          message: "Too many updates.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await resolveRetryAfter(userId),
         });
         return;
       }
@@ -497,7 +515,7 @@ interface QuestionUnresolvePayload {
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — shared with resolve: 20 / 60 s per user
+ *   3. Rate limit    — shared with resolve: 10 / 10 s per user
  *   4. Question      — must exist and currently be RESOLVED
  *   5. Permission    — TA/PROFESSOR only
  *   6. Persist       — question status updated to OPEN
@@ -529,7 +547,9 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
       const isRateLimited = await checkResolveRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are resolving too quickly. Please wait before trying again.",
+          message: "Too many updates.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await resolveRetryAfter(userId),
         });
         return;
       }

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, rateLimitRetryAfter } from "@/lib/rateLimit";
 import { questionRateLimit, upvoteRateLimit, resolveRateLimit } from "@/lib/redisKeys";
 import { QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH } from "@/utils/contentLimits";
 
@@ -8,13 +8,13 @@ import { QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH } from "@/utils/contentLimits"
 // ---------------------------------------------------------------------------
 
 export { QUESTION_MIN_LENGTH, QUESTION_MAX_LENGTH };
-export const RATE_LIMIT_COUNT = 10;
-export const RATE_LIMIT_WINDOW_SECONDS = 60;
+export const RATE_LIMIT_COUNT = 2;
+export const RATE_LIMIT_WINDOW_SECONDS = 10;
 
-export const UPVOTE_RATE_LIMIT_COUNT = 30;
-export const UPVOTE_RATE_LIMIT_WINDOW_SECONDS = 60;
-export const RESOLVE_RATE_LIMIT_COUNT = 20;
-export const RESOLVE_RATE_LIMIT_WINDOW_SECONDS = 60;
+export const UPVOTE_RATE_LIMIT_COUNT = 10;
+export const UPVOTE_RATE_LIMIT_WINDOW_SECONDS = 10;
+export const RESOLVE_RATE_LIMIT_COUNT = 10;
+export const RESOLVE_RATE_LIMIT_WINDOW_SECONDS = 10;
 
 export const VALID_VISIBILITIES = new Set<string>(["PUBLIC", "INSTRUCTOR_ONLY"]);
 
@@ -96,7 +96,7 @@ export function validateVisibility(visibility: unknown): ValidationResult {
 
 /**
  * Checks whether the given user has exceeded the question rate limit
- * (10 questions per 60-second window).
+ * (2 questions per 10-second window, per session).
  * The counter is scoped to the session so a new session always starts fresh.
  * Returns true if the limit has been exceeded.
  */
@@ -110,7 +110,7 @@ export async function checkQuestionRateLimit(userId: string, sessionId: string):
 
 /**
  * Checks whether the given user has exceeded the upvote rate limit
- * (30 upvotes per 60-second window).
+ * (10 upvotes per 10-second window).
  * Returns true if the limit has been exceeded.
  */
 export async function checkUpvoteRateLimit(userId: string): Promise<boolean> {
@@ -123,7 +123,7 @@ export async function checkUpvoteRateLimit(userId: string): Promise<boolean> {
 
 /**
  * Checks whether the given user has exceeded the resolve rate limit
- * (20 resolves per 60-second window).
+ * (10 resolves per 10-second window).
  * Returns true if the limit has been exceeded.
  */
 export async function checkResolveRateLimit(userId: string): Promise<boolean> {
@@ -237,4 +237,20 @@ export async function validateQuestionSlideContext(
     slidePageIndex,
     slideSetId,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Retry windows — seconds until a refused action may be retried
+// ---------------------------------------------------------------------------
+
+export async function questionRetryAfter(userId: string, sessionId: string): Promise<number> {
+  return rateLimitRetryAfter(questionRateLimit(userId, sessionId));
+}
+
+export async function upvoteRetryAfter(userId: string): Promise<number> {
+  return rateLimitRetryAfter(upvoteRateLimit(userId));
+}
+
+export async function resolveRetryAfter(userId: string): Promise<number> {
+  return rateLimitRetryAfter(resolveRateLimit(userId));
 }

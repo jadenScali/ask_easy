@@ -6,9 +6,10 @@ import { answerMode as answerModeKey } from "@/lib/redisKeys";
 import {
   validateAnswerContent,
   checkAnswerRateLimit,
+  answerRetryAfter,
   validateQuestionForAnswers,
 } from "@/lib/answerValidation";
-import { checkUpvoteRateLimit } from "@/lib/questionValidation";
+import { checkUpvoteRateLimit, upvoteRetryAfter } from "@/lib/questionValidation";
 import type { AnswerCreatedPayload } from "@/socket/types";
 
 // ---------------------------------------------------------------------------
@@ -68,7 +69,7 @@ export function broadcastAnswer(
  *   2. Payload shape — must be a non-null object
  *   3. Question      — must exist in the DB and belong to an active session
  *   4. Content       — length bounds via validateAnswerContent
- *   5. Rate limit    — 15 answers / 60 s per user, enforced in Redis
+ *   5. Rate limit    — 5 answers / 10 s per user, enforced in Redis
  *   6. Persist       — answer written to the database
  *   7. Broadcast     — emitted to the session room
  *
@@ -148,8 +149,9 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
       const isRateLimited = await checkAnswerRateLimit(userId);
       if (isRateLimited) {
         socket.emit("answer:error", {
-          message:
-            "You have reached the answer limit. Please wait before submitting another answer.",
+          message: "Too many answers.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await answerRetryAfter(userId),
         });
         return;
       }
@@ -226,7 +228,7 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
  * Guard order:
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with answerId
- *   3. Rate limit    — shared upvote rate limit (30 / 60 s per user)
+ *   3. Rate limit    — shared upvote rate limit (10 / 10 s per user)
  *   4. Toggle        — create or delete AnswerUpvote, adjust upvoteCount
  *   5. Broadcast     — emitted to the session room as answer:updated
  */
@@ -256,7 +258,9 @@ export function handleAnswerUpvote(socket: Socket, io: Server): void {
       const isRateLimited = await checkUpvoteRateLimit(userId);
       if (isRateLimited) {
         socket.emit("answer:error", {
-          message: "You are upvoting too quickly. Please wait before trying again.",
+          message: "Too many upvotes.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await upvoteRetryAfter(userId),
         });
         return;
       }

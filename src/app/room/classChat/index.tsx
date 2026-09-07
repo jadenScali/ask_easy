@@ -9,10 +9,17 @@ import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
 import FilterTabs from "./FilterTabs";
 import type { Question, Comment, Role } from "@/utils/types";
+import { showRateLimitToast } from "@/components/RateLimitToast";
 
 // ---------------------------------------------------------------------------
 // API response types (what the REST endpoints return)
 // ---------------------------------------------------------------------------
+
+interface RateLimitAwareError {
+  message: string;
+  code?: string;
+  retryAfterSeconds?: number;
+}
 
 interface APIQuestion {
   id: string;
@@ -381,8 +388,20 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       );
     };
 
-    const onQuestionError = (payload: { message: string }) => {
+    // Rate-limit refusals arrive already phrased for the user, and they are not
+    // about what is in the composer — they get a toast instead of inline text.
+    const onQuestionError = (payload: RateLimitAwareError) => {
+      if (payload.code === "RATE_LIMITED") {
+        showRateLimitToast(payload.message, payload.retryAfterSeconds);
+        return;
+      }
       setQuestionError(payload.message);
+    };
+
+    const onAnswerError = (payload: RateLimitAwareError) => {
+      if (payload.code === "RATE_LIMITED") {
+        showRateLimitToast(payload.message, payload.retryAfterSeconds);
+      }
     };
 
     const onQuestionDeleted = (payload: { questionId: string }) => {
@@ -426,6 +445,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     socket.on("answer:deleted", onAnswerDeleted);
     socket.on("answer-mode:changed", onAnswerModeChanged);
     socket.on("question:error", onQuestionError);
+    socket.on("answer:error", onAnswerError);
     socket.on("question:author:revealed", onQuestionAuthorRevealed);
     socket.on("answer:author:revealed", onAnswerAuthorRevealed);
 
@@ -441,6 +461,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       socket.off("answer:deleted", onAnswerDeleted);
       socket.off("answer-mode:changed", onAnswerModeChanged);
       socket.off("question:error", onQuestionError);
+      socket.off("answer:error", onAnswerError);
       socket.off("question:author:revealed", onQuestionAuthorRevealed);
       socket.off("answer:author:revealed", onAnswerAuthorRevealed);
     };

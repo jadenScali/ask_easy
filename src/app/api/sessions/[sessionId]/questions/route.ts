@@ -10,6 +10,8 @@ import {
 import {
   validateQuestionContent,
   validateVisibility,
+  checkQuestionRateLimit,
+  questionRetryAfter,
   validateSessionForQuestions,
   validateQuestionSlideContext,
 } from "@/lib/questionValidation";
@@ -184,7 +186,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Validations:
  *   1. Content length bounds
  *   2. Visibility is valid if provided
- *   3. Rate limit (10 questions per 60 seconds per user)
+ *   3. Rate limit (2 questions per 10 seconds per user, per session)
  *   4. Session exists and has submissions enabled
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -223,6 +225,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const visibilityValidation = validateVisibility(body.visibility);
     if (!visibilityValidation.valid) {
       return NextResponse.json({ error: visibilityValidation.error }, { status: 400 });
+    }
+
+    // 5b. Rate limit — counter is per user per session
+    if (await checkQuestionRateLimit(authorId, sessionId)) {
+      const retryAfter = await questionRetryAfter(authorId, sessionId);
+      return NextResponse.json(
+        { error: "Too many questions.", retryAfterSeconds: retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
     }
 
     // 6. Validate session using shared validation (submissions enabled check)

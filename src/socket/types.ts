@@ -5,6 +5,20 @@ export interface SocketData {
   currentSessionId?: string;
 }
 
+export interface SocketErrorPayload {
+  message: string;
+  /**
+   * Set only on rate-limit refusals. The message is already short and phrased
+   * for the user, so clients can show it as a toast without rewriting it.
+   */
+  code?: "RATE_LIMITED";
+  /**
+   * Seconds until the refused action may be retried. Clients count this down
+   * beside the message; 0 or absent means the window could not be read.
+   */
+  retryAfterSeconds?: number;
+}
+
 export interface QuestionCreatePayload {
   content: string;
   sessionId: string;
@@ -207,9 +221,9 @@ export interface ViewerCountPayload {
 /** Events the **server** can send to the **client**. */
 export interface ServerToClientEvents {
   "question:created": (payload: QuestionCreatedPayload) => void;
-  "question:error": (payload: { message: string }) => void;
+  "question:error": (payload: SocketErrorPayload) => void;
   "answer:created": (payload: AnswerCreatedPayload) => void;
-  "answer:error": (payload: { message: string }) => void;
+  "answer:error": (payload: SocketErrorPayload) => void;
   "question:updated": (payload: QuestionUpdatedPayload) => void;
   "answer:updated": (payload: AnswerUpdatedPayload) => void;
   "question:resolved": (payload: QuestionResolvedPayload) => void;
