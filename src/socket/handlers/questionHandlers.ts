@@ -32,9 +32,13 @@ interface QuestionBroadcastPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  authorRole?: "STUDENT" | "TA" | "PROFESSOR";
   slidePageIndex?: number | null;
   slideSetId?: string | null;
 }
+
+/** Extra field on the copy sent back to the author — never broadcast to others. */
+type OwnQuestionPayload = QuestionBroadcastPayload & { isMine: true };
 
 interface QuestionUpvotePayload {
   questionId: string;
@@ -61,16 +65,27 @@ interface QuestionDeletePayload {
  *   session:{sessionId}:instructors — TAs and professors only
  *
  * PUBLIC questions go to the first room; INSTRUCTOR_ONLY questions go to the second.
+ *
+ * When `authorSocket` is in the target room it receives a copy flagged
+ * `isMine` instead of the shared payload, so the author can still act on an
+ * anonymous question whose identity was stripped from the broadcast.
  */
 export function broadcastQuestion(
   io: Server,
   sessionId: string,
-  question: QuestionBroadcastPayload
+  question: QuestionBroadcastPayload,
+  authorSocket?: Socket
 ): void {
   const targetRoom =
     question.visibility === "INSTRUCTOR_ONLY"
       ? `session:${sessionId}:instructors`
       : `session:${sessionId}`;
+
+  if (authorSocket?.rooms.has(targetRoom)) {
+    authorSocket.to(targetRoom).emit("question:created", question);
+    authorSocket.emit("question:created", { ...question, isMine: true } as OwnQuestionPayload);
+    return;
+  }
 
   io.to(targetRoom).emit("question:created", question);
 }
@@ -200,10 +215,11 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
               authorId: question.authorId,
               authorName: question.author?.name ?? null,
               authorUtorid: question.author?.utorid ?? null,
+              authorRole: authorEnrollmentRole as "STUDENT" | "TA" | "PROFESSOR",
             }),
       };
 
-      broadcastQuestion(io, question.sessionId, broadcastPayload);
+      broadcastQuestion(io, question.sessionId, broadcastPayload, socket);
 
       // For anonymous questions, reveal the author to instructors via a separate event
       // so that TAs and Professors can see who posted while students remain unaware.
@@ -590,9 +606,10 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
  * Registers the `question:delete` event listener on the given socket.
  *
  * Permission rules:
+ *   - Anyone        → may delete their own question, whatever their role
  *   - PROFESSOR     → may delete any question
- *   - TA            → may delete any STUDENT's question, or their own
- *   - STUDENT       → never allowed
+ *   - TA            → may additionally delete any STUDENT's question
+ *   - STUDENT       → nothing beyond their own
  *
  * Roles are resolved via CourseEnrollment so that per-course TA status is
  * correctly detected regardless of the user's global User.role.
@@ -647,18 +664,18 @@ export function handleQuestionDelete(socket: Socket, io: Server): void {
 
       const requesterRole = requesterEnrollment?.role ?? "STUDENT";
 
-      // 5. Permission check
-      if (requesterRole === "STUDENT") {
-        socket.emit("question:error", {
-          message: "You do not have permission to delete this question.",
-        });
-        return;
-      }
+      // 5. Permission check — authors may always delete their own question
+      const isOwn = question.authorId === userId;
+      if (!isOwn) {
+        if (requesterRole === "STUDENT") {
+          socket.emit("question:error", {
+            message: "You do not have permission to delete this question.",
+          });
+          return;
+        }
 
-      if (requesterRole === "TA") {
-        // TAs may only delete their own messages or those by STUDENT authors
-        const isOwn = question.authorId === userId;
-        if (!isOwn) {
+        if (requesterRole === "TA") {
+          // TAs may only delete questions by STUDENT authors
           const authorEnrollment = question.authorId
             ? await prisma.courseEnrollment.findUnique({
                 where: { userId_courseId: { userId: question.authorId, courseId } },

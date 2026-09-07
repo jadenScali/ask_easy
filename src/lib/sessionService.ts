@@ -20,6 +20,8 @@ export interface SessionMembershipResult {
   error?: string;
   statusCode?: number;
   role?: Role;
+  /** Course that owns the session — set whenever the session exists. */
+  courseId?: string;
 }
 
 export interface ProfessorRoleValidationResult {
@@ -180,13 +182,38 @@ export async function getSessionMembership(
       valid: false,
       error: "You are not enrolled in this course.",
       statusCode: 403,
+      courseId: session.courseId,
     };
   }
 
   return {
     valid: true,
     role: enrollment.role,
+    courseId: session.courseId,
   };
+}
+
+/**
+ * Resolves the per-course role of several users in one query.
+ *
+ * CourseEnrollment is the source of truth for role-based UI: `User.role` is
+ * global and stays STUDENT for someone who is a TA in a particular course.
+ * Users with no enrollment row (e.g. a professor acting outside their own
+ * courses) are absent from the map — fall back to their global role.
+ */
+export async function getCourseRoles(
+  courseId: string,
+  userIds: string[]
+): Promise<Map<string, Role>> {
+  const ids = [...new Set(userIds)];
+  if (ids.length === 0) return new Map();
+
+  const enrollments = await prisma.courseEnrollment.findMany({
+    where: { courseId, userId: { in: ids } },
+    select: { userId: true, role: true },
+  });
+
+  return new Map(enrollments.map((e) => [e.userId, e.role]));
 }
 
 /**

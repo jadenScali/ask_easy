@@ -38,9 +38,26 @@ interface AnswerDeletePayload {
  * Broadcasts a newly created answer to the session room.
  *
  * Answers are always broadcast to all users in the session (no visibility filtering).
+ *
+ * When `authorSocket` is in the room it receives a copy flagged `isMine`
+ * instead of the shared payload, so the author can still act on an anonymous
+ * answer whose identity was stripped from the broadcast.
  */
-export function broadcastAnswer(io: Server, sessionId: string, answer: AnswerCreatedPayload): void {
-  io.to(`session:${sessionId}`).emit("answer:created", answer);
+export function broadcastAnswer(
+  io: Server,
+  sessionId: string,
+  answer: AnswerCreatedPayload,
+  authorSocket?: Socket
+): void {
+  const room = `session:${sessionId}`;
+
+  if (authorSocket?.rooms.has(room)) {
+    authorSocket.to(room).emit("answer:created", answer);
+    authorSocket.emit("answer:created", { ...answer, isMine: true });
+    return;
+  }
+
+  io.to(room).emit("answer:created", answer);
 }
 
 /**
@@ -174,7 +191,7 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
         createdAt: answer.createdAt,
       };
 
-      broadcastAnswer(io, questionValidation.question!.sessionId, broadcastPayload);
+      broadcastAnswer(io, questionValidation.question!.sessionId, broadcastPayload, socket);
 
       // For anonymous answers, reveal the author to instructors via a separate event.
       if (answer.isAnonymous) {
@@ -323,9 +340,10 @@ export function handleAnswerUpvote(socket: Socket, io: Server): void {
  * Registers the `answer:delete` event listener on the given socket.
  *
  * Permission rules (same as question delete):
+ *   - Anyone    → may delete their own answer, whatever their role
  *   - PROFESSOR → may delete any answer
- *   - TA        → may delete any STUDENT's answer, or their own
- *   - STUDENT   → never allowed
+ *   - TA        → may additionally delete any STUDENT's answer
+ *   - STUDENT   → nothing beyond their own
  */
 export function handleAnswerDelete(socket: Socket, io: Server): void {
   socket.on("answer:delete", async (payload: AnswerDeletePayload) => {
@@ -381,17 +399,17 @@ export function handleAnswerDelete(socket: Socket, io: Server): void {
 
       const requesterRole = requesterEnrollment?.role ?? "STUDENT";
 
-      // 5. Permission check
-      if (requesterRole === "STUDENT") {
-        socket.emit("answer:error", {
-          message: "You do not have permission to delete this answer.",
-        });
-        return;
-      }
+      // 5. Permission check — authors may always delete their own answer
+      const isOwn = answer.authorId === userId;
+      if (!isOwn) {
+        if (requesterRole === "STUDENT") {
+          socket.emit("answer:error", {
+            message: "You do not have permission to delete this answer.",
+          });
+          return;
+        }
 
-      if (requesterRole === "TA") {
-        const isOwn = answer.authorId === userId;
-        if (!isOwn) {
+        if (requesterRole === "TA") {
           const authorEnrollment = await prisma.courseEnrollment.findUnique({
             where: { userId_courseId: { userId: answer.authorId, courseId } },
             select: { role: true },

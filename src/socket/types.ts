@@ -23,6 +23,10 @@ export interface QuestionCreatedPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  /** Omitted for anonymous questions, alongside the other author fields. */
+  authorRole?: "STUDENT" | "TA" | "PROFESSOR";
+  /** Only ever true on the copy sent back to the author of the question. */
+  isMine?: boolean;
   slidePageIndex?: number | null;
   slideSetId?: string | null;
 }
@@ -65,6 +69,8 @@ export interface AnswerCreatedPayload {
   authorRole: "STUDENT" | "TA" | "PROFESSOR";
   isAccepted: boolean;
   createdAt: Date;
+  /** Only ever true on the copy sent back to the author of the answer. */
+  isMine?: boolean;
 }
 
 export interface QuestionUpvotePayload {

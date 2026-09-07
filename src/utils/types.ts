@@ -19,6 +19,8 @@ interface BasePost {
   content: string;
   upvotes: number;
   isAnonymous?: boolean;
+  /** True for the viewer's own post — set even when anonymity hides the author. */
+  isMine?: boolean;
 }
 
 export interface Question extends BasePost {

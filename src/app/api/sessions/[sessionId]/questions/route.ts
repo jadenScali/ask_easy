@@ -13,7 +13,7 @@ import {
   validateSessionForQuestions,
   validateQuestionSlideContext,
 } from "@/lib/questionValidation";
-import { getSessionMembership } from "@/lib/sessionService";
+import { getCourseRoles, getSessionMembership } from "@/lib/sessionService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,6 +108,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const canRevealAnonymous = role === "TA" || role === "PROFESSOR";
 
+    // Author roles come from CourseEnrollment, not User.role — the latter is
+    // global and stays STUDENT for someone who is a TA in this course, which
+    // would drop the instructor cap and mis-scope the delete buttons.
+    const courseRoles = await getCourseRoles(
+      membership.courseId!,
+      page.map((q) => q.authorId).filter((id): id is string => id !== null)
+    );
+
     const transformedQuestions = page.map((q) => ({
       id: q.id,
       content: q.content,
@@ -121,7 +129,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       createdAt: q.createdAt,
       slidePageIndex: q.slidePageIndex,
       slideSetId: q.slideSetId,
-      author: q.isAnonymous && !canRevealAnonymous ? null : q.author,
+      author:
+        q.isAnonymous && !canRevealAnonymous
+          ? null
+          : q.author && { ...q.author, role: courseRoles.get(q.author.id) ?? q.author.role },
+      /** Lets the author delete their own post even when anonymity hides them. */
+      isMine: q.authorId === userId,
     }));
 
     const payload: {

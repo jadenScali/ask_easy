@@ -14,7 +14,7 @@ interface PostItemProps {
   onUnresolve?: () => void;
   onSubmitAnswer?: (content: string) => void;
   onAnswerUpvote?: (answerId: string) => void;
-  /** Called when the professor/TA wants to delete this question. */
+  /** Called when the current user may delete this question. */
   onDeleteQuestion?: () => void;
   /**
    * Given a reply (Comment), returns a delete callback if the current user

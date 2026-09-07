@@ -26,6 +26,8 @@ interface APIQuestion {
   slidePageIndex?: number | null;
   slideSetId?: string | null;
   author: { id: string; utorid: string; name: string; role: Role } | null;
+  /** True for the viewer's own question, even when it was posted anonymously. */
+  isMine?: boolean;
 }
 
 interface APIAnswer {
@@ -40,6 +42,8 @@ interface APIAnswer {
   isAccepted: boolean;
   upvoteCount: number;
   createdAt: string;
+  /** True for the viewer's own answer, even when it was posted anonymously. */
+  isMine?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +73,7 @@ function apiAnswerToPost(a: APIAnswer): Comment {
     content: a.content,
     upvotes: a.upvoteCount ?? 0,
     isAnonymous: a.isAnonymous,
+    isMine: a.isMine,
   };
 }
 
@@ -92,6 +97,7 @@ function apiQuestionToPost(q: APIQuestion, answers: APIAnswer[]): Question {
     upvotes: q.upvoteCount,
     isResolved: q.status === "RESOLVED",
     isAnonymous: q.isAnonymous,
+    isMine: q.isMine,
     replies: answers.map((a) => apiAnswerToPost(a)),
     visibility: q.visibility,
     slidePageIndex: q.slidePageIndex ?? null,
@@ -190,8 +196,10 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       authorId?: string | null;
       authorName?: string | null;
       authorUtorid?: string | null;
+      authorRole?: Role;
       slidePageIndex?: number | null;
       slideSetId?: string | null;
+      isMine?: boolean;
     }) => {
       const user =
         payload.isAnonymous || !payload.authorName
@@ -201,7 +209,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
               utorid: payload.authorUtorid ?? undefined,
               username: payload.authorName,
               pfp: "",
-              role: "STUDENT" as Role,
+              role: payload.authorRole ?? ("STUDENT" as Role),
             };
 
       const newQuestion: Question = {
@@ -213,6 +221,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         upvotes: 0,
         isResolved: false,
         isAnonymous: payload.isAnonymous,
+        isMine: payload.isMine,
         replies: [],
         visibility: payload.visibility as "PUBLIC" | "INSTRUCTOR_ONLY",
         slidePageIndex: payload.slidePageIndex ?? null,
@@ -252,6 +261,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       authorRole: Role;
       isAccepted: boolean;
       createdAt: Date;
+      isMine?: boolean;
     }) => {
       const apiAnswer: APIAnswer = {
         id: payload.id,
@@ -271,6 +281,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         isAccepted: payload.isAccepted,
         upvoteCount: 0,
         createdAt: new Date(payload.createdAt).toISOString(),
+        isMine: payload.isMine,
       };
       const newReply = apiAnswerToPost(apiAnswer);
 
@@ -522,19 +533,32 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   };
 
   /**
-   * Returns true when the current user may delete the given post.
-   * - PROFESSOR: always (including anonymous posts)
-   * - TA: only named STUDENT posts, or their own named posts.
-   *       Anonymous posts are excluded because the client cannot verify the
-   *       author's role, and the author could be a professor or another TA.
-   * - STUDENT: never
+   * True when the post belongs to the current user. `isMine` is what makes
+   * this work for posts the viewer made anonymously — those come back with the
+   * author stripped, so the id comparison alone would say no.
    */
-  function canDelete(post: { user: { id?: string; role: Role } | null }): boolean {
+  function isOwnPost(post: { user: { id?: string } | null; isMine?: boolean }): boolean {
+    if (post.isMine) return true;
+    return post.user?.id !== undefined && post.user.id === userId;
+  }
+
+  /**
+   * Returns true when the current user may delete the given post.
+   * Mirrors the server rules in question/answer `delete` handlers:
+   * - Own post: always, whatever the viewer's role. `isMine` covers posts the
+   *   viewer made anonymously, where the author is stripped from the payload.
+   * - PROFESSOR: any post, including anonymous ones.
+   * - TA: any STUDENT-authored post. Anonymous posts by someone else are
+   *   excluded when the author is hidden, since the role can't be checked.
+   * - STUDENT: nothing beyond their own.
+   */
+  function canDelete(post: {
+    user: { id?: string; role: Role } | null;
+    isMine?: boolean;
+  }): boolean {
+    if (isOwnPost(post)) return true;
     if (role === "PROFESSOR") return true;
-    if (role === "TA") {
-      if (!post.user) return false; // anonymous — author role unknown, hide button
-      return post.user.role === "STUDENT" || post.user.id === userId;
-    }
+    if (role === "TA") return post.user?.role === "STUDENT";
     return false;
   }
 
@@ -623,12 +647,10 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
                       commentView={commentView}
                       onUpvote={() => handleUpvote(q.id)}
                       onResolve={
-                        isInstructor || q.user?.id === userId
-                          ? () => handleResolve(q.id)
-                          : undefined
+                        isInstructor || isOwnPost(q) ? () => handleResolve(q.id) : undefined
                       }
                       onUnresolve={isInstructor ? () => handleUnresolve(q.id) : undefined}
-                      canAnswer={canAnswerGlobal || q.user?.id === userId}
+                      canAnswer={canAnswerGlobal || isOwnPost(q)}
                       onSubmitAnswer={(content) => handleSubmitAnswer(q.id, content)}
                       onAnswerUpvote={handleAnswerUpvote}
                       onDeleteQuestion={canDelete(q) ? () => handleDeleteQuestion(q.id) : undefined}
