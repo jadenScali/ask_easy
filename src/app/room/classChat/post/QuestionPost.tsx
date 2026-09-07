@@ -179,11 +179,8 @@ export default function QuestionPost({
 
       {/* Meta row */}
       <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 text-xs text-stone-500">
-        {/* Left: status dot + username + time + toggle */}
+        {/* Left: username + time + toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full shrink-0 ${resolved ? "bg-green-500" : "bg-amber-400"}`}
-          />
           {renderUsername(post.user, post.isAnonymous)}
           <span>{post.timestamp}</span>
 
