@@ -537,17 +537,11 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const handleResolve = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:resolve", { questionId });
-    // Optimistic update
-    setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, isResolved: true } : q)));
   };
 
   const handleUnresolve = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:unresolve", { questionId });
-    // Optimistic update
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === questionId ? { ...q, isResolved: false } : q))
-    );
   };
 
   const handleSubmitAnswer = (questionId: string, content: string) => {

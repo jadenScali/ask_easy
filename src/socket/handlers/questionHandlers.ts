@@ -108,6 +108,12 @@ export function broadcastQuestion(
  *   8. Broadcast     — emitted to the correct room; authorId stripped when anonymous
  */
 export function handleQuestionCreate(socket: Socket, io: Server): void {
+  // Everything this handler refuses is about the content being submitted, so it
+  // is scoped to the composer. The rate-limit refusal below opts out: it is a
+  // cooldown rather than a problem with the draft, and belongs in a toast.
+  const emitCreateError = (message: string | undefined) =>
+    socket.emit("question:error", { message: message ?? "Invalid request.", source: "create" });
+
   socket.on("question:create", async (payload: QuestionCreatePayload) => {
     console.log("[QuestionHandler] question:create received", JSON.stringify(payload));
     try {
@@ -115,14 +121,14 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const userId: string | undefined = socket.data?.userId;
       if (!userId) {
         console.log("[QuestionHandler] Rejected: no userId");
-        socket.emit("question:error", { message: "Authentication required." });
+        emitCreateError("Authentication required.");
         return;
       }
 
       // 2. Payload shape guard — socket events can arrive with any shape
       if (!payload || typeof payload !== "object") {
         console.log("[QuestionHandler] Rejected: invalid payload shape");
-        socket.emit("question:error", { message: "Invalid request." });
+        emitCreateError("Invalid request.");
         return;
       }
 
@@ -130,7 +136,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const contentValidation = validateQuestionContent(payload.content);
       if (!contentValidation.valid) {
         console.log("[QuestionHandler] Rejected: content validation -", contentValidation.error);
-        socket.emit("question:error", { message: contentValidation.error });
+        emitCreateError(contentValidation.error);
         return;
       }
 
@@ -141,7 +147,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
           "[QuestionHandler] Rejected: visibility validation -",
           visibilityValidation.error
         );
-        socket.emit("question:error", { message: visibilityValidation.error });
+        emitCreateError(visibilityValidation.error);
         return;
       }
 
@@ -159,7 +165,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const sessionValidation = await validateSessionForQuestions(payload.sessionId);
       if (!sessionValidation.valid) {
         console.log("[QuestionHandler] Rejected: session validation -", sessionValidation.error);
-        socket.emit("question:error", { message: sessionValidation.error });
+        emitCreateError(sessionValidation.error);
         return;
       }
 
@@ -190,7 +196,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
           select: { role: true },
         });
         if (!enrollment) {
-          socket.emit("question:error", { message: "You are not enrolled in this session." });
+          emitCreateError("You are not enrolled in this session.");
           return;
         }
         authorEnrollmentRole = enrollment.role;
@@ -248,9 +254,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       }
     } catch (error) {
       console.error("[QuestionHandler] Failed to create question:", error);
-      socket.emit("question:error", {
-        message: "An error occurred while creating your question.",
-      });
+      emitCreateError("An error occurred while creating your question.");
     }
   });
 }

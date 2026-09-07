@@ -17,6 +17,13 @@ export interface SocketErrorPayload {
    * beside the message; 0 or absent means the window could not be read.
    */
   retryAfterSeconds?: number;
+  /**
+   * "create" marks an error about the content being submitted, which belongs
+   * inline under the composer. Everything else refers to an action taken on an
+   * existing post and is surfaced as a toast instead. `code` wins over this:
+   * a rate-limit refusal always toasts, whatever it was refusing.
+   */
+  source?: "create";
 }
 
 export interface QuestionCreatePayload {

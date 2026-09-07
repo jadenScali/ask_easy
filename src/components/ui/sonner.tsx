@@ -1,8 +1,7 @@
 "use client";
 
+import { Gauge } from "lucide-react";
 import { Toaster as Sonner, ToasterProps } from "sonner";
-
-import { MoodSadDizzy } from "@/components/icons/mood-sad-dizzy";
 
 /**
  * shadcn's sonner wrapper. The upstream version reads the active theme from
@@ -15,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // richColors gives toast.error its own red palette instead of the
       // neutral popover surface used by plain toasts.
       richColors
-      icons={{ error: <MoodSadDizzy className="h-5 w-5" /> }}
+      icons={{ error: <Gauge className="h-5 w-5" /> }}
       className="toaster group"
       style={
         {
