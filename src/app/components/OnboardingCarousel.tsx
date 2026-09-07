@@ -80,11 +80,7 @@ export default function OnboardingCarousel({
 
   const StepIcon = stepData.icon ? iconMap[stepData.icon] : null;
 
-  /** Which step index last failed to load a hero image (no effect needed to reset on navigation). */
-  const [heroFailedAtIndex, setHeroFailedAtIndex] = useState<number | null>(null);
-
   const heroSrc = "image" in stepData ? stepData.image : undefined;
-  const showHeroPhoto = Boolean(heroSrc && heroFailedAtIndex !== currentStepIndex);
 
   return (
     <div className="fixed inset-0 z-[100] bg-white">
@@ -183,25 +179,13 @@ export default function OnboardingCarousel({
 
         {/* Right visual: illustration image */}
         <div className="w-full h-56 sm:h-72 shrink-0 md:w-[58%] md:h-full bg-stone-50 relative flex items-center justify-center overflow-hidden">
-          {showHeroPhoto ? (
+          {heroSrc && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={heroSrc}
               alt={stepData.altText}
               className="relative z-10 max-w-full max-h-full w-full h-full object-contain"
-              onError={() => setHeroFailedAtIndex(currentStepIndex)}
             />
-          ) : (
-            <div className="relative z-10 flex flex-col items-center justify-center gap-5 px-8 py-10 text-center">
-              {StepIcon && (
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white/90 text-green-600 flex items-center justify-center shadow-lg border border-green-100/60">
-                  <StepIcon className="w-12 h-12 sm:w-14 sm:h-14" strokeWidth={2} />
-                </div>
-              )}
-              <p className="text-sm sm:text-base font-medium text-stone-600 max-w-[260px] leading-snug">
-                {stepData.altText}
-              </p>
-            </div>
           )}
         </div>
       </div>
