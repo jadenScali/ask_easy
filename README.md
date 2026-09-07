@@ -124,23 +124,26 @@ DEV_EMAIL=your.email@mail.utoronto.ca
 DEV_ROLE=PROFESSOR   # or STUDENT
 ```
 
-> **The `DEV_*` variables must never be set in production.** The auth route falls back to `DEV_UTORID` whenever the Shibboleth header is missing, so setting them on the server would allow unauthenticated logins.
+> **The `DEV_*` variables are ignored in production.** The auth route only reads them when `NODE_ENV !== "production"`; a production request arriving without a Shibboleth header is rejected with a 401 rather than falling back to `DEV_UTORID`. Keep them out of production environments regardless — `docker-compose.override.yml` is the only place they belong.
 
-| Variable                            | Required | Description                                                                 |
-| ----------------------------------- | :------: | --------------------------------------------------------------------------- |
-| `POSTGRES_USER` / `PASSWORD` / `DB` |   Yes    | Postgres credentials                                                        |
-| `REDIS_PASSWORD`                    |   Yes    | Passed to the Redis container as `--requirepass`                            |
-| `SESSION_SECRET`                    |   Yes    | Key for iron-session cookie encryption. Changing it logs everyone out.      |
-| `PROFESSOR_WHITELIST`               |   Yes    | UTORids granted the PROFESSOR role on login. Everyone else is a STUDENT.    |
-| `ADMIN_WHITELIST`                   |   Yes    | UTORids granted `/dashboard` access. Empty means nobody can administer.     |
-| `CRON_SECRET`                       |   Yes    | Bearer token for the cleanup-sessions cron endpoint                         |
-| `DATABASE_URL`                      |   Dev    | Only in `.env.local`; Compose derives it otherwise                          |
-| `REDIS_URL`                         |   Dev    | Only in `.env.local`; Compose derives it otherwise                          |
-| `DEV_UTORID`                        |   Dev    | Fake UTORid injected when Shibboleth is not present                         |
-| `DEV_NAME`                          |   Dev    | Display name for the fake dev user                                          |
-| `DEV_EMAIL`                         |   Dev    | Email for the fake dev user; defaults to `<utorid>@mail.utoronto.ca`        |
-| `DEV_ROLE`                          |   Dev    | `PROFESSOR` or `STUDENT` — overrides whitelist lookup                       |
-| `SOCKET_IO_USE_REDIS`               |    No    | Set to `"false"` to disable the Socket.IO Redis adapter. Enabled otherwise. |
+| Variable                                    | Required | Description                                                                                                               |
+| ------------------------------------------- | :------: | ------------------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_USER` / `PASSWORD` / `DB`         |   Yes    | Postgres credentials                                                                                                      |
+| `REDIS_PASSWORD`                            |   Yes    | Passed to the Redis container as `--requirepass`                                                                          |
+| `SESSION_SECRET`                            |   Yes    | Key for iron-session cookie encryption. Changing it logs everyone out.                                                    |
+| `PROFESSOR_WHITELIST`                       |   Yes    | UTORids granted the PROFESSOR role on login. Everyone else is a STUDENT.                                                  |
+| `ADMIN_WHITELIST`                           |   Yes    | UTORids granted `/dashboard` access. Empty means nobody can administer.                                                   |
+| `CRON_SECRET`                               |   Yes    | Bearer token for the cleanup-sessions cron endpoint                                                                       |
+| `DATABASE_URL`                              |   Dev    | Only in `.env.local`; Compose derives it otherwise                                                                        |
+| `REDIS_URL`                                 |   Dev    | Only in `.env.local`; Compose derives it otherwise                                                                        |
+| `DEV_UTORID`                                |   Dev    | Fake UTORid injected when Shibboleth is not present                                                                       |
+| `DEV_NAME`                                  |   Dev    | Display name for the fake dev user                                                                                        |
+| `DEV_EMAIL`                                 |   Dev    | Email for the fake dev user; defaults to `<utorid>@mail.utoronto.ca`                                                      |
+| `DEV_ROLE`                                  |   Dev    | `PROFESSOR` or `STUDENT` — overrides whitelist lookup                                                                     |
+| `DEV_PROF_*` / `DEV_TA_*` / `DEV_STUDENT_*` |   Dev    | Per-persona `UTORID` / `NAME` / `ROLE` / `EMAIL` for `pnpm dev:all`. Each falls back to a default with a startup warning. |
+| `SESSION_COOKIE_NAME`                       |    No    | Set per instance by `pnpm dev:all`. Ignored in production.                                                                |
+| `NEXT_DIST_DIR`                             |    No    | Set per instance by `pnpm dev:all` so concurrent dev servers don't share `.next`.                                         |
+| `SOCKET_IO_USE_REDIS`                       |    No    | Set to `"false"` to disable the Socket.IO Redis adapter. Enabled otherwise.                                               |
 
 Whitelists are read once at startup and cached, so restart the app after changing them.
 
@@ -190,6 +193,62 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The app auto-reloads on changes.
+
+### Testing multi-user flows: `pnpm dev:all`
+
+A single dev server can only ever be one user — identity comes from `DEV_UTORID` /
+`DEV_NAME` / `DEV_ROLE`, which are process-global. To test a student asking a question
+while a professor answers it, run three instances at once:
+
+```bash
+pnpm dev:all
+```
+
+| Persona   | URL                   | Cookie                |
+| --------- | --------------------- | --------------------- |
+| `PROF`    | http://localhost:3000 | `askeasy-dev-prof`    |
+| `TA`      | http://localhost:3001 | `askeasy-dev-ta`      |
+| `STUDENT` | http://localhost:3002 | `askeasy-dev-student` |
+
+Open all three in tabs of the same window. Each instance gets its own session cookie
+name, so they don't clobber each other — browser cookies are keyed by host and ignore
+the port, meaning a single shared name would make every tab become whoever logged in
+last. All three share one Postgres and one Redis, which is what lets events broadcast
+between them.
+
+Configure each persona in `.env` (all optional — anything missing falls back to a
+default and prints a warning at startup):
+
+```bash
+DEV_PROF_UTORID=devprof
+DEV_PROF_NAME=Dev Professor
+DEV_PROF_ROLE=PROFESSOR
+
+DEV_TA_UTORID=devta
+DEV_TA_NAME=Dev TA
+DEV_TA_ROLE=TA
+
+DEV_STUDENT_UTORID=devstudent
+DEV_STUDENT_NAME=Dev Student
+DEV_STUDENT_ROLE=STUDENT
+```
+
+Notes:
+
+- `DEV_ROLE` overrides the whitelist lookup, so the PROF persona does **not** need to be
+  in `PROFESSOR_WHITELIST`. It **does** need to be in `ADMIN_WHITELIST` for `/dashboard`
+  access, and whitelists are cached at startup — restart after editing.
+- Leave `SOCKET_IO_USE_REDIS` unset. With the adapter disabled, events don't cross
+  instances: a question asked in one tab won't appear in the others until you refresh.
+- Each instance runs its own Next compiler against its own build dir (`.next-prof`,
+  `.next-ta`, `.next-student`), so expect roughly 3× the memory and CPU of `pnpm dev`.
+- Instances start one at a time rather than all at once. Next rewrites `next-env.d.ts`
+  during startup and each instance wants its own build dir in it, so concurrent
+  startups interleave those writes and corrupt the file — which then breaks
+  `pnpm typecheck` and the pre-commit hook. Startup therefore takes about three
+  times as long as `pnpm dev`.
+- `pnpm dev` is unaffected and still uses the `ask_easy_session` cookie, so switching
+  between the two modes won't log you out of either.
 
 ### Switching branches
 
