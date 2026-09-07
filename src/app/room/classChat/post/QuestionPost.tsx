@@ -172,6 +172,7 @@ export default function QuestionPost({
 
   return (
     <div
+      id={`question-${post.id}`}
       className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-green-400" : "bg-stone-075 border-amber-400"}`}
     >
       {/* Question body */}

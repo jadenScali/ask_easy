@@ -129,6 +129,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  /** Id of a question the viewer just asked, pending a scroll to its card. */
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   // Separate history that keeps deleted messages (marked as [deleted]) for the
@@ -234,6 +236,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
 
       setQuestions((prev) => [...prev, newQuestion]);
       historyRef.current = [...historyRef.current, { ...newQuestion, replies: [] }];
+      if (payload.isMine) setScrollTargetId(payload.id);
     };
 
     const onQuestionUpdated = (payload: { id: string; upvoteCount: number }) => {
@@ -451,10 +454,22 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     // when the questions state changes (which always follows a history update).
   }, [questions, chatHistoryRef]);
 
-  // Scroll to bottom whenever new questions arrive
+  // Land on the newest questions once the initial history has loaded
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [questions.length]);
+    if (isLoading) return;
+    bottomRef.current?.scrollIntoView();
+  }, [isLoading]);
+
+  // The list is sorted by resolved state then upvotes, so a question the viewer
+  // just asked can land anywhere — scroll to its card rather than to the bottom.
+  // Nothing to scroll to when the current filter or search excludes it.
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    document
+      .getElementById(`question-${scrollTargetId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setScrollTargetId(null);
+  }, [scrollTargetId]);
 
   // -------------------------------------------------------------------------
   // Action handlers
