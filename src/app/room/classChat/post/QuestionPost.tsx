@@ -172,7 +172,7 @@ export default function QuestionPost({
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-l-2 border-green-200 border-l-green-400" : "bg-stone-075 border-l-2 border-stone-200 border-l-amber-400"}`}
+      className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-green-400" : "bg-stone-075 border-amber-400"}`}
     >
       {/* Question body */}
       <div className="font-semibold whitespace-pre-wrap text-stone-900">{post.content}</div>
