@@ -87,7 +87,7 @@ export default function OnboardingCarousel({
       {/* Fills the viewport — the two halves split it rather than a floating card */}
       <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row relative">
         {/* Left Content Half */}
-        <div className="w-full md:w-[42%] md:h-full flex flex-col bg-white relative z-10 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)]">
+        <div className="w-full md:w-[42%] md:h-full flex flex-col bg-white relative z-10">
           <div className="flex-1 p-6 md:p-8 pb-0 flex flex-col justify-start md:justify-center">
             <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full max-w-lg mx-auto mt-6 sm:mt-8 md:mt-0">
               {/* Flex Row: Icon + Title */}
