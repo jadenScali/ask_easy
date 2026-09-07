@@ -398,7 +398,7 @@ function checkResolvePermission(
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
  *   3. Rate limit    — 10 resolves / 10 s per user, enforced in Redis
- *   4. Question      — must exist in the DB and not already be resolved
+ *   4. Question      — must exist in the DB; no-op when already resolved
  *   5. Permission    — TA/PROFESSOR can resolve any; STUDENT only their own
  *   6. Persist       — question status updated to RESOLVED
  *   7. Broadcast     — emit resolved status to the session room
@@ -454,8 +454,9 @@ export function handleQuestionResolve(socket: Socket, io: Server): void {
         return;
       }
 
+      // Already in the requested state — a duplicate click, not something the
+      // user can act on. No-op rather than reporting an error.
       if (question.status === "RESOLVED") {
-        socket.emit("question:error", { message: "Question is already resolved." });
         return;
       }
 
@@ -520,7 +521,7 @@ interface QuestionUnresolvePayload {
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
  *   3. Rate limit    — shared with resolve: 10 / 10 s per user
- *   4. Question      — must exist and currently be RESOLVED
+ *   4. Question      — must exist; no-op when it is not RESOLVED
  *   5. Permission    — TA/PROFESSOR only
  *   6. Persist       — question status updated to OPEN
  *   7. Broadcast     — emit unresolved status to the session room
@@ -575,8 +576,8 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
         return;
       }
 
+      // Already in the requested state — see the matching guard in resolve.
       if (question.status !== "RESOLVED") {
-        socket.emit("question:error", { message: "Question is not resolved." });
         return;
       }
 
