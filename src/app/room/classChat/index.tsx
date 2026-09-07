@@ -131,6 +131,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const [commentView, setCommentView] = useState<"all" | "unresolved" | "resolved">("all");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answerMode, setAnswerMode] = useState<"all" | "instructors_only">("instructors_only");
+  const [notificationMode, setNotificationMode] = useState<"off" | "sound" | "browser">("off");
   const [globalIsAnonymous, setGlobalIsAnonymous] = useState(false);
   const [includeSlideContext, setIncludeSlideContext] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -556,6 +557,12 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     setAnswerMode(newMode); // Optimistic update
   };
 
+  const handleToggleNotificationMode = () => {
+    setNotificationMode((current) =>
+      current === "off" ? "sound" : current === "sound" ? "browser" : "off"
+    );
+  };
+
   const handleDeleteQuestion = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:delete", { questionId, sessionId });
@@ -643,6 +650,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       <ChatHeader
         role={role}
         answerMode={answerMode}
+        notificationMode={notificationMode}
+        onToggleNotificationMode={handleToggleNotificationMode}
         onToggleAnswerMode={handleToggleAnswerMode}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
