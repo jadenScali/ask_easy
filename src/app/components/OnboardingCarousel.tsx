@@ -87,13 +87,13 @@ export default function OnboardingCarousel({
   const showHeroPhoto = Boolean(heroSrc && heroFailedAtIndex !== currentStepIndex);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm p-4 md:p-8">
-      {/* Main Container - Responsive Height & Mobile Stacking */}
-      <div className="bg-white rounded-md shadow-2xl w-full max-w-[950px] min-h-[500px] md:h-[600px] overflow-hidden flex flex-col md:flex-row relative">
+    <div className="fixed inset-0 z-[100] bg-white">
+      {/* Fills the viewport — the two halves split it rather than a floating card */}
+      <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row relative">
         {/* Left Content Half */}
-        <div className="w-full md:w-[42%] h-full flex flex-col bg-white relative z-10 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)]">
-          <div className="flex-1 p-6 md:p-8 pb-0 flex flex-col justify-start">
-            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full mt-6 sm:mt-8 md:mt-[4.5rem]">
+        <div className="w-full md:w-[42%] md:h-full flex flex-col bg-white relative z-10 shadow-[4px_0_24px_-10px_rgba(0,0,0,0.1)]">
+          <div className="flex-1 p-6 md:p-8 pb-0 flex flex-col justify-start md:justify-center">
+            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full max-w-lg mx-auto mt-6 sm:mt-8 md:mt-0">
               {/* Flex Row: Icon + Title */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6 sm:mb-8 pr-8">
                 {StepIcon && (
@@ -142,7 +142,7 @@ export default function OnboardingCarousel({
           </div>
 
           {/* Locked Footer Controls */}
-          <div className="mt-8 md:mt-auto px-6 md:px-8 pb-6 md:pb-8 flex items-center justify-between">
+          <div className="mt-8 md:mt-auto px-6 md:px-8 pb-6 md:pb-8 flex items-center justify-between w-full max-w-lg mx-auto md:max-w-none">
             {/* Dots */}
             <div className="flex gap-1.5 sm:gap-2">
               {Array.from({ length: totalSteps }).map((_, idx) => (
@@ -182,7 +182,7 @@ export default function OnboardingCarousel({
         </div>
 
         {/* Right visual: illustration image */}
-        <div className="w-full h-56 sm:h-72 md:w-[58%] md:h-full bg-stone-50 relative flex items-center justify-center overflow-hidden">
+        <div className="w-full h-56 sm:h-72 shrink-0 md:w-[58%] md:h-full bg-stone-50 relative flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-green-50/80 via-stone-100/70 to-stone-200/50" />
           {showHeroPhoto ? (
             <>
