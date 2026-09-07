@@ -1,22 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ShieldCheck,
-  LogIn,
-  MessageSquarePlus,
-  MessageCircleReply,
-  Ghost,
-  UserCheck,
-  ShieldAlert,
-  MonitorUp,
-  Presentation,
-  BookOpen,
-  LucideIcon,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { OnboardingStep } from "@/constants/onboarding";
 
 interface OnboardingCarouselProps {
@@ -24,19 +9,6 @@ interface OnboardingCarouselProps {
   onComplete: () => void;
   requireAgreement?: boolean;
 }
-
-const iconMap: Record<string, LucideIcon> = {
-  LogIn,
-  MessageSquarePlus,
-  MessageCircleReply,
-  Ghost,
-  UserCheck,
-  ShieldAlert,
-  MonitorUp,
-  Presentation,
-  BookOpen,
-  ShieldCheck, // for the community rules
-};
 
 export default function OnboardingCarousel({
   steps,
@@ -67,47 +39,39 @@ export default function OnboardingCarousel({
   const stepData = isAgreementStep
     ? {
         title: "Community Rules",
-        icon: "ShieldCheck",
         image: "/images/onboarding/community-rules.svg",
         description: [
-          "Post only genuine questions related to the lecture.",
+          "Post only questions related to the lecture.",
           "Be respectful toward instructors and peers.",
-          "Spam or off-topic posts may be removed.",
+          "Spam or off-topic posts may be removed by TAs.",
         ],
         altText: "Community rules and guidelines",
       }
     : steps[currentStepIndex];
 
-  const StepIcon = stepData.icon ? iconMap[stepData.icon] : null;
-
   const heroSrc = "image" in stepData ? stepData.image : undefined;
 
   return (
     <div className="fixed inset-0 z-[100] bg-white">
-      {/* Fills the viewport — the two halves split it rather than a floating card */}
-      <div className="w-full h-full overflow-y-auto md:overflow-hidden flex flex-col md:flex-row relative">
+      {/* Fills the viewport — the two halves split it rather than a floating card.
+          Text only on mobile; an even side-by-side split from md up. */}
+      <div className="w-full h-full overflow-hidden flex flex-col md:flex-row relative">
         {/* Left Content Half */}
-        <div className="w-full md:w-[42%] md:h-full flex flex-col bg-white relative z-10">
-          <div className="flex-1 p-6 md:p-8 pb-0 flex flex-col justify-start md:justify-center">
-            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full max-w-lg mx-auto mt-6 sm:mt-8 md:mt-0">
-              {/* Flex Row: Icon + Title */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5 mb-6 sm:mb-8 pr-8">
-                {StepIcon && (
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-50 text-green-600 rounded-md flex items-center justify-center shadow-sm border border-green-100/50 shrink-0">
-                    <StepIcon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={2.5} />
-                  </div>
-                )}
-                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 leading-tight">
-                  {stepData.title}
-                </h2>
-              </div>
+        <div className="w-full h-full min-h-0 md:w-1/2 flex flex-col bg-white relative z-10">
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 pb-0 flex flex-col justify-start md:justify-center">
+            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full mt-2 sm:mt-4 md:mt-0 md:min-h-[300px]">
+              {/* Fixed min height: centring then lands every step in the same
+                  place, so the heading holds still as bullet counts change. */}
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 leading-tight mb-6 sm:mb-8 pr-8">
+                {stepData.title}
+              </h2>
 
               {/* Clean Bullets */}
               <ul className="space-y-4">
                 {stepData.description.map((bullet, idx) => (
                   <li key={idx} className="flex items-start gap-4">
                     <div className="w-2 h-2 rounded-full bg-green-500 mt-2 sm:mt-2.5 shrink-0" />
-                    <span className="text-base sm:text-lg text-stone-600 leading-relaxed font-medium">
+                    <span className="text-base sm:text-lg text-stone-900 leading-relaxed font-medium">
                       {bullet}
                     </span>
                   </li>
@@ -138,7 +102,7 @@ export default function OnboardingCarousel({
           </div>
 
           {/* Locked Footer Controls */}
-          <div className="mt-8 md:mt-auto px-6 md:px-8 pb-6 md:pb-8 flex items-center justify-between w-full max-w-lg mx-auto md:max-w-none">
+          <div className="mt-auto shrink-0 px-6 md:px-8 pt-4 pb-6 md:pb-8 flex items-center justify-between w-full">
             {/* Dots */}
             <div className="flex gap-1.5 sm:gap-2">
               {Array.from({ length: totalSteps }).map((_, idx) => (
@@ -178,7 +142,7 @@ export default function OnboardingCarousel({
         </div>
 
         {/* Right visual: illustration image */}
-        <div className="w-full h-56 sm:h-72 shrink-0 md:w-[58%] md:h-full bg-stone-50 relative flex items-center justify-center overflow-hidden">
+        <div className="hidden md:flex md:w-1/2 md:h-full bg-stone-50 relative items-center justify-center overflow-hidden">
           {heroSrc && (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
