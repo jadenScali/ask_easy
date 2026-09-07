@@ -15,6 +15,7 @@ import {
 import { Question, Post } from "@/utils/types";
 import { UpvoteButton, canRevealAuthor, renderUsername, RevealAuthorButton } from "./PostUtils";
 import { useRoom } from "../../RoomContext";
+import { ANSWER_MAX_LENGTH, ANSWER_MIN_LENGTH } from "@/utils/contentLimits";
 
 // ---------------------------------------------------------------------------
 // Reply composer
@@ -37,9 +38,14 @@ function ReplySection({ canAnswer, onSubmit, onCancel }: ReplySectionProps) {
     );
   }
 
+  // Same rule as the question composer: an out-of-bounds reply greys out Post
+  // rather than erroring. The server enforces the same bounds — see
+  // validateAnswerContent.
+  const trimmed = text.trim();
+  const canPost = trimmed.length >= ANSWER_MIN_LENGTH && trimmed.length <= ANSWER_MAX_LENGTH;
+
   const handleSubmit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!canPost) return;
     onSubmit(trimmed);
     setText("");
     onCancel();
@@ -64,7 +70,7 @@ function ReplySection({ canAnswer, onSubmit, onCancel }: ReplySectionProps) {
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!text.trim()}>
+          <Button size="sm" onClick={handleSubmit} disabled={!canPost}>
             Post reply
           </Button>
         </div>

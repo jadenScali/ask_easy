@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { questionRateLimit, upvoteRateLimit, resolveRateLimit } from "@/lib/redisKeys";
+import { QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH } from "@/utils/contentLimits";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-export const QUESTION_MIN_LENGTH = 5;
-export const QUESTION_MAX_LENGTH = 500;
+export { QUESTION_MIN_LENGTH, QUESTION_MAX_LENGTH };
 export const RATE_LIMIT_COUNT = 10;
 export const RATE_LIMIT_WINDOW_SECONDS = 60;
 

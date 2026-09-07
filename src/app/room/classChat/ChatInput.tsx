@@ -4,8 +4,7 @@ import { useState } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Ghost, User, Send, Presentation } from "lucide-react";
 import { useSlideContext } from "../RoomContext";
-
-const MIN_LENGTH = 5;
+import { QUESTION_MAX_LENGTH, QUESTION_MIN_LENGTH } from "@/utils/contentLimits";
 
 interface ChatInputProps {
   onSubmit: (content: string, isAnonymous: boolean, includeSlideContext: boolean) => void;
@@ -30,27 +29,23 @@ export default function ChatInput({
 }: ChatInputProps) {
   const slideContext = useSlideContext();
   const [content, setContent] = useState("");
-  const [localError, setLocalError] = useState<string | null>(null);
 
-  const error = serverError ?? localError;
   const slideContextAvailable =
     slideContext.slidePageIndex !== null && slideContext.slideSetId !== null;
 
+  // Out-of-bounds length just greys out Post, the same as an empty box. The
+  // server enforces the same bounds — see validateQuestionContent.
+  const trimmed = content.trim();
+  const canPost =
+    !disabled && trimmed.length >= QUESTION_MIN_LENGTH && trimmed.length <= QUESTION_MAX_LENGTH;
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
-    if (localError) setLocalError(null);
     if (serverError) onClearError?.();
   };
 
   const handleSubmit = () => {
-    const trimmed = content.trim();
-    if (disabled) return;
-    if (!trimmed) return;
-    if (trimmed.length < MIN_LENGTH) {
-      setLocalError(`Question must be at least ${MIN_LENGTH} characters.`);
-      return;
-    }
-    setLocalError(null);
+    if (!canPost) return;
     onSubmit(trimmed, isAnonymous, includeSlideContext && slideContextAvailable);
     setContent("");
   };
@@ -76,7 +71,7 @@ export default function ChatInput({
               disabled={disabled}
               rows={3}
               className={`resize-none min-h-[70px] focus-visible:ring-0 focus-visible:border-stone-400 ${
-                error ? "border-red-400 bg-red-50" : ""
+                serverError ? "border-red-400 bg-red-50" : ""
               }`}
             />
             <div className="flex items-center justify-between gap-1">
@@ -121,11 +116,11 @@ export default function ChatInput({
                     {includeSlideContext ? `Slide ${slideContext.slidePageIndex! + 1}` : "No slide"}
                   </button>
                 )}
-                {error && <p className="text-xs text-red-500">{error}</p>}
+                {serverError && <p className="text-xs text-red-500">{serverError}</p>}
               </div>
               <button
                 onClick={handleSubmit}
-                disabled={disabled || !content.trim()}
+                disabled={!canPost}
                 className="flex items-center justify-center gap-1.5 h-9 px-4 bg-stone-900 hover:bg-stone-800 text-stone-50 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Post
