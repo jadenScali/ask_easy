@@ -6,6 +6,7 @@
     "prisma:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "dev": "cross-env NODE_ENV=development tsx watch src/server.ts",
+    "dev:all": "tsx scripts/dev-all.ts",
     "build": "next build",
     "start": "tsx src/server.ts",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 3",

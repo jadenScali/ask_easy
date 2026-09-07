@@ -1,9 +1,30 @@
 import dotenv from "dotenv";
 
+// Vars injected per-instance by scripts/dev-all.ts. The `override: true` below
+// would otherwise let .env.local clobber them and silently collapse all three
+// dev instances into a single identity. Empty under plain `pnpm dev`.
+const INJECTED_KEYS = [
+  "PORT",
+  "DEV_UTORID",
+  "DEV_NAME",
+  "DEV_EMAIL",
+  "DEV_ROLE",
+  "SESSION_COOKIE_NAME",
+  "NEXT_DIST_DIR",
+] as const;
+
+const injected = Object.fromEntries(
+  INJECTED_KEYS.filter((key) => process.env[key] !== undefined).map((key) => [
+    key,
+    process.env[key] as string,
+  ])
+);
+
 // Load .env, then let .env.local override (same as prisma.config.ts).
 // Required for `pnpm dev` outside Docker: hosts must be localhost, not postgres/redis.
 dotenv.config();
 dotenv.config({ path: ".env.local", override: true });
+Object.assign(process.env, injected);
 import { createServer, type IncomingMessage } from "node:http";
 import next from "next";
 

@@ -20,6 +20,8 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Per-instance build dirs created by `pnpm dev:all`
+    ".next-*/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

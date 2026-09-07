@@ -14,7 +14,7 @@ import type { SocketData } from "../types";
 //
 // Flow:
 //   1. Parse the `cookie` header from the Socket.IO handshake.
-//   2. Find the `ask_easy_session` cookie value.
+//   2. Find the session cookie by name (resolveCookieName in lib/devCookie).
 //   3. Unseal it with iron-session to recover { userId, utorid, role, … }.
 //   4. Populate socket.data and call next().
 // ---------------------------------------------------------------------------

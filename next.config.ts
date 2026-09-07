@@ -11,6 +11,9 @@ const scriptSrc = isProd
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // `pnpm dev:all` gives each instance its own build dir so three concurrent
+  // dev servers from one checkout don't fight over `.next`. Unset otherwise.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   serverExternalPackages: ["socket.io", "ioredis", "@socket.io/redis-adapter"],
   async headers() {
     return [
