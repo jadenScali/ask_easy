@@ -39,7 +39,7 @@ export default function OnboardingCarousel({
   const stepData = isAgreementStep
     ? {
         title: "Community Rules",
-        image: "/images/onboarding/community-rules.svg",
+        image: "/images/onboarding/kind.png",
         description: [
           "Post only questions related to the lecture.",
           "Be respectful toward instructors and peers.",
@@ -58,10 +58,11 @@ export default function OnboardingCarousel({
       <div className="w-full h-full overflow-hidden flex flex-col md:flex-row relative">
         {/* Left Content Half */}
         <div className="w-full h-full min-h-0 md:w-1/2 flex flex-col bg-white relative z-10">
-          <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 pb-0 flex flex-col justify-start md:justify-center">
-            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full mt-2 sm:mt-4 md:mt-0 md:min-h-[300px]">
-              {/* Fixed min height: centring then lands every step in the same
-                  place, so the heading holds still as bullet counts change. */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 pb-0 flex flex-col">
+            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300 w-full my-auto min-h-[300px]">
+              {/* Centred with auto margins rather than justify-center, which can
+                  clip the top of a step that overflows. The fixed min height
+                  keeps the heading still as bullet counts change. */}
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 leading-tight mb-6 sm:mb-8 pr-8">
                 {stepData.title}
               </h2>
