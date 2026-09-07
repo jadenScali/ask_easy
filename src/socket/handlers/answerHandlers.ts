@@ -6,9 +6,10 @@ import { answerMode as answerModeKey } from "@/lib/redisKeys";
 import {
   validateAnswerContent,
   checkAnswerRateLimit,
+  answerRetryAfter,
   validateQuestionForAnswers,
 } from "@/lib/answerValidation";
-import { checkUpvoteRateLimit } from "@/lib/questionValidation";
+import { checkUpvoteRateLimit, upvoteRetryAfter } from "@/lib/questionValidation";
 import type { AnswerCreatedPayload } from "@/socket/types";
 
 // ---------------------------------------------------------------------------
@@ -38,9 +39,26 @@ interface AnswerDeletePayload {
  * Broadcasts a newly created answer to the session room.
  *
  * Answers are always broadcast to all users in the session (no visibility filtering).
+ *
+ * When `authorSocket` is in the room it receives a copy flagged `isMine`
+ * instead of the shared payload, so the author can still act on an anonymous
+ * answer whose identity was stripped from the broadcast.
  */
-export function broadcastAnswer(io: Server, sessionId: string, answer: AnswerCreatedPayload): void {
-  io.to(`session:${sessionId}`).emit("answer:created", answer);
+export function broadcastAnswer(
+  io: Server,
+  sessionId: string,
+  answer: AnswerCreatedPayload,
+  authorSocket?: Socket
+): void {
+  const room = `session:${sessionId}`;
+
+  if (authorSocket?.rooms.has(room)) {
+    authorSocket.to(room).emit("answer:created", answer);
+    authorSocket.emit("answer:created", { ...answer, isMine: true });
+    return;
+  }
+
+  io.to(room).emit("answer:created", answer);
 }
 
 /**
@@ -51,7 +69,7 @@ export function broadcastAnswer(io: Server, sessionId: string, answer: AnswerCre
  *   2. Payload shape — must be a non-null object
  *   3. Question      — must exist in the DB and belong to an active session
  *   4. Content       — length bounds via validateAnswerContent
- *   5. Rate limit    — 15 answers / 60 s per user, enforced in Redis
+ *   5. Rate limit    — 5 answers / 10 s per user, enforced in Redis
  *   6. Persist       — answer written to the database
  *   7. Broadcast     — emitted to the session room
  *
@@ -100,11 +118,15 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
 
       // 4. Answer mode check — if restricted, only TAs, professors, and the
       //    question's own author may answer (so a student can follow up in their thread).
+      //    That exemption stops at anonymous questions: with everyone else locked
+      //    out, a reply from the asker would identify them as the asker.
       //    Role is resolved via CourseEnrollment so TAs are correctly detected
       //    (User.role is always STUDENT for TAs globally).
       const mode = await redisCache.get(answerModeKey(sessionId));
       if (mode === "instructors_only") {
-        const isQuestionAuthor = questionValidation.question!.authorId === userId;
+        const isQuestionAuthor =
+          questionValidation.question!.authorId === userId &&
+          !questionValidation.question!.isAnonymous;
         if (!isQuestionAuthor) {
           const effectiveRole = answerEnrollment?.role ?? "STUDENT";
           if (effectiveRole === "STUDENT") {
@@ -127,8 +149,9 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
       const isRateLimited = await checkAnswerRateLimit(userId);
       if (isRateLimited) {
         socket.emit("answer:error", {
-          message:
-            "You have reached the answer limit. Please wait before submitting another answer.",
+          message: "Too many answers.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await answerRetryAfter(userId),
         });
         return;
       }
@@ -174,7 +197,7 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
         createdAt: answer.createdAt,
       };
 
-      broadcastAnswer(io, questionValidation.question!.sessionId, broadcastPayload);
+      broadcastAnswer(io, questionValidation.question!.sessionId, broadcastPayload, socket);
 
       // For anonymous answers, reveal the author to instructors via a separate event.
       if (answer.isAnonymous) {
@@ -205,7 +228,7 @@ export function handleAnswerCreate(socket: Socket, io: Server): void {
  * Guard order:
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with answerId
- *   3. Rate limit    — shared upvote rate limit (30 / 60 s per user)
+ *   3. Rate limit    — shared upvote rate limit (10 / 10 s per user)
  *   4. Toggle        — create or delete AnswerUpvote, adjust upvoteCount
  *   5. Broadcast     — emitted to the session room as answer:updated
  */
@@ -235,7 +258,9 @@ export function handleAnswerUpvote(socket: Socket, io: Server): void {
       const isRateLimited = await checkUpvoteRateLimit(userId);
       if (isRateLimited) {
         socket.emit("answer:error", {
-          message: "You are upvoting too quickly. Please wait before trying again.",
+          message: "Too many upvotes.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await upvoteRetryAfter(userId),
         });
         return;
       }
@@ -323,9 +348,10 @@ export function handleAnswerUpvote(socket: Socket, io: Server): void {
  * Registers the `answer:delete` event listener on the given socket.
  *
  * Permission rules (same as question delete):
+ *   - Anyone    → may delete their own answer, whatever their role
  *   - PROFESSOR → may delete any answer
- *   - TA        → may delete any STUDENT's answer, or their own
- *   - STUDENT   → never allowed
+ *   - TA        → may additionally delete any STUDENT's answer
+ *   - STUDENT   → nothing beyond their own
  */
 export function handleAnswerDelete(socket: Socket, io: Server): void {
   socket.on("answer:delete", async (payload: AnswerDeletePayload) => {
@@ -381,17 +407,17 @@ export function handleAnswerDelete(socket: Socket, io: Server): void {
 
       const requesterRole = requesterEnrollment?.role ?? "STUDENT";
 
-      // 5. Permission check
-      if (requesterRole === "STUDENT") {
-        socket.emit("answer:error", {
-          message: "You do not have permission to delete this answer.",
-        });
-        return;
-      }
+      // 5. Permission check — authors may always delete their own answer
+      const isOwn = answer.authorId === userId;
+      if (!isOwn) {
+        if (requesterRole === "STUDENT") {
+          socket.emit("answer:error", {
+            message: "You do not have permission to delete this answer.",
+          });
+          return;
+        }
 
-      if (requesterRole === "TA") {
-        const isOwn = answer.authorId === userId;
-        if (!isOwn) {
+        if (requesterRole === "TA") {
           const authorEnrollment = await prisma.courseEnrollment.findUnique({
             where: { userId_courseId: { userId: answer.authorId, courseId } },
             select: { role: true },

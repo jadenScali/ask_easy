@@ -4,8 +4,12 @@ import { prisma } from "@/lib/prisma";
 import {
   validateQuestionContent,
   validateVisibility,
+  checkQuestionRateLimit,
   checkUpvoteRateLimit,
   checkResolveRateLimit,
+  questionRetryAfter,
+  upvoteRetryAfter,
+  resolveRetryAfter,
   validateSessionForQuestions,
   validateQuestionSlideContext,
 } from "@/lib/questionValidation";
@@ -32,9 +36,13 @@ interface QuestionBroadcastPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  authorRole?: "STUDENT" | "TA" | "PROFESSOR";
   slidePageIndex?: number | null;
   slideSetId?: string | null;
 }
+
+/** Extra field on the copy sent back to the author — never broadcast to others. */
+type OwnQuestionPayload = QuestionBroadcastPayload & { isMine: true };
 
 interface QuestionUpvotePayload {
   questionId: string;
@@ -61,16 +69,27 @@ interface QuestionDeletePayload {
  *   session:{sessionId}:instructors — TAs and professors only
  *
  * PUBLIC questions go to the first room; INSTRUCTOR_ONLY questions go to the second.
+ *
+ * When `authorSocket` is in the target room it receives a copy flagged
+ * `isMine` instead of the shared payload, so the author can still act on an
+ * anonymous question whose identity was stripped from the broadcast.
  */
 export function broadcastQuestion(
   io: Server,
   sessionId: string,
-  question: QuestionBroadcastPayload
+  question: QuestionBroadcastPayload,
+  authorSocket?: Socket
 ): void {
   const targetRoom =
     question.visibility === "INSTRUCTOR_ONLY"
       ? `session:${sessionId}:instructors`
       : `session:${sessionId}`;
+
+  if (authorSocket?.rooms.has(targetRoom)) {
+    authorSocket.to(targetRoom).emit("question:created", question);
+    authorSocket.emit("question:created", { ...question, isMine: true } as OwnQuestionPayload);
+    return;
+  }
 
   io.to(targetRoom).emit("question:created", question);
 }
@@ -83,12 +102,18 @@ export function broadcastQuestion(
  *   2. Payload shape — must be a non-null object
  *   3. Content       — length bounds via validateQuestionContent
  *   4. Visibility    — must be a recognised Visibility value if provided
- *   5. Rate limit    — 10 questions / 60 s per user, enforced in Redis
+ *   5. Rate limit    — 2 questions / 10 s per user per session, enforced in Redis
  *   6. Session       — must exist in the DB and have isSubmissionsEnabled === true
  *   7. Persist       — question written to the database (authorId always stored)
  *   8. Broadcast     — emitted to the correct room; authorId stripped when anonymous
  */
 export function handleQuestionCreate(socket: Socket, io: Server): void {
+  // Everything this handler refuses is about the content being submitted, so it
+  // is scoped to the composer. The rate-limit refusal below opts out: it is a
+  // cooldown rather than a problem with the draft, and belongs in a toast.
+  const emitCreateError = (message: string | undefined) =>
+    socket.emit("question:error", { message: message ?? "Invalid request.", source: "create" });
+
   socket.on("question:create", async (payload: QuestionCreatePayload) => {
     console.log("[QuestionHandler] question:create received", JSON.stringify(payload));
     try {
@@ -96,14 +121,14 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const userId: string | undefined = socket.data?.userId;
       if (!userId) {
         console.log("[QuestionHandler] Rejected: no userId");
-        socket.emit("question:error", { message: "Authentication required." });
+        emitCreateError("Authentication required.");
         return;
       }
 
       // 2. Payload shape guard — socket events can arrive with any shape
       if (!payload || typeof payload !== "object") {
         console.log("[QuestionHandler] Rejected: invalid payload shape");
-        socket.emit("question:error", { message: "Invalid request." });
+        emitCreateError("Invalid request.");
         return;
       }
 
@@ -111,7 +136,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const contentValidation = validateQuestionContent(payload.content);
       if (!contentValidation.valid) {
         console.log("[QuestionHandler] Rejected: content validation -", contentValidation.error);
-        socket.emit("question:error", { message: contentValidation.error });
+        emitCreateError(contentValidation.error);
         return;
       }
 
@@ -122,19 +147,29 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
           "[QuestionHandler] Rejected: visibility validation -",
           visibilityValidation.error
         );
-        socket.emit("question:error", { message: visibilityValidation.error });
+        emitCreateError(visibilityValidation.error);
         return;
       }
 
-      // 5. Session validation
+      // 5. Rate limit — counter is per user per session
+      if (await checkQuestionRateLimit(userId, payload.sessionId)) {
+        socket.emit("question:error", {
+          message: "Too many questions.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await questionRetryAfter(userId, payload.sessionId),
+        });
+        return;
+      }
+
+      // 6. Session validation
       const sessionValidation = await validateSessionForQuestions(payload.sessionId);
       if (!sessionValidation.valid) {
         console.log("[QuestionHandler] Rejected: session validation -", sessionValidation.error);
-        socket.emit("question:error", { message: sessionValidation.error });
+        emitCreateError(sessionValidation.error);
         return;
       }
 
-      // 5b. Slide context validation — invalid context is dropped; question still saves
+      // 6a. Slide context validation — invalid context is dropped; question still saves
       const slideValidation = await validateQuestionSlideContext(
         payload.sessionId,
         payload.slidePageIndex,
@@ -149,7 +184,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       const slidePageIndex = slideValidation.valid ? slideValidation.slidePageIndex : null;
       const slideSetId = slideValidation.valid ? slideValidation.slideSetId : null;
 
-      // 5a. Enrollment check — any non-PROFESSOR must be enrolled in the session's course
+      // 6b. Enrollment check — any non-PROFESSOR must be enrolled in the session's course
       const sessionForEnrollment = await prisma.session.findUnique({
         where: { id: payload.sessionId },
         select: { courseId: true },
@@ -161,13 +196,13 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
           select: { role: true },
         });
         if (!enrollment) {
-          socket.emit("question:error", { message: "You are not enrolled in this session." });
+          emitCreateError("You are not enrolled in this session.");
           return;
         }
         authorEnrollmentRole = enrollment.role;
       }
 
-      // 6. Persist to database (include author for display name in broadcast)
+      // 7. Persist to database (include author for display name in broadcast)
       //    authorId is always stored for audit purposes, but stripped
       //    from the broadcast payload in step 8 when isAnonymous is true.
       const question = await prisma.question.create({
@@ -200,10 +235,11 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
               authorId: question.authorId,
               authorName: question.author?.name ?? null,
               authorUtorid: question.author?.utorid ?? null,
+              authorRole: authorEnrollmentRole as "STUDENT" | "TA" | "PROFESSOR",
             }),
       };
 
-      broadcastQuestion(io, question.sessionId, broadcastPayload);
+      broadcastQuestion(io, question.sessionId, broadcastPayload, socket);
 
       // For anonymous questions, reveal the author to instructors via a separate event
       // so that TAs and Professors can see who posted while students remain unaware.
@@ -218,9 +254,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
       }
     } catch (error) {
       console.error("[QuestionHandler] Failed to create question:", error);
-      socket.emit("question:error", {
-        message: "An error occurred while creating your question.",
-      });
+      emitCreateError("An error occurred while creating your question.");
     }
   });
 }
@@ -235,7 +269,7 @@ export function handleQuestionCreate(socket: Socket, io: Server): void {
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — 30 upvotes / 60 s per user, enforced in Redis
+ *   3. Rate limit    — 10 upvotes / 10 s per user, enforced in Redis
  *   4. Toggle        — create or delete upvote + update count in a transaction
  *   5. Broadcast     — emit updated count to the session room
  */
@@ -265,7 +299,9 @@ export function handleQuestionUpvote(socket: Socket, io: Server): void {
       const isRateLimited = await checkUpvoteRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are upvoting too quickly. Please wait before trying again.",
+          message: "Too many upvotes.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await upvoteRetryAfter(userId),
         });
         return;
       }
@@ -361,8 +397,8 @@ function checkResolvePermission(
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — 20 resolves / 60 s per user, enforced in Redis
- *   4. Question      — must exist in the DB and not already be resolved
+ *   3. Rate limit    — 10 resolves / 10 s per user, enforced in Redis
+ *   4. Question      — must exist in the DB; no-op when already resolved
  *   5. Permission    — TA/PROFESSOR can resolve any; STUDENT only their own
  *   6. Persist       — question status updated to RESOLVED
  *   7. Broadcast     — emit resolved status to the session room
@@ -393,7 +429,9 @@ export function handleQuestionResolve(socket: Socket, io: Server): void {
       const isRateLimited = await checkResolveRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are resolving too quickly. Please wait before trying again.",
+          message: "Too many updates.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await resolveRetryAfter(userId),
         });
         return;
       }
@@ -416,8 +454,9 @@ export function handleQuestionResolve(socket: Socket, io: Server): void {
         return;
       }
 
+      // Already in the requested state — a duplicate click, not something the
+      // user can act on. No-op rather than reporting an error.
       if (question.status === "RESOLVED") {
-        socket.emit("question:error", { message: "Question is already resolved." });
         return;
       }
 
@@ -481,8 +520,8 @@ interface QuestionUnresolvePayload {
  * Guard order (cheap-before-expensive):
  *   1. Auth          — socket.data.userId must exist
  *   2. Payload shape — must be a non-null object with a string questionId
- *   3. Rate limit    — shared with resolve: 20 / 60 s per user
- *   4. Question      — must exist and currently be RESOLVED
+ *   3. Rate limit    — shared with resolve: 10 / 10 s per user
+ *   4. Question      — must exist; no-op when it is not RESOLVED
  *   5. Permission    — TA/PROFESSOR only
  *   6. Persist       — question status updated to OPEN
  *   7. Broadcast     — emit unresolved status to the session room
@@ -513,7 +552,9 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
       const isRateLimited = await checkResolveRateLimit(userId);
       if (isRateLimited) {
         socket.emit("question:error", {
-          message: "You are resolving too quickly. Please wait before trying again.",
+          message: "Too many updates.",
+          code: "RATE_LIMITED",
+          retryAfterSeconds: await resolveRetryAfter(userId),
         });
         return;
       }
@@ -535,8 +576,8 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
         return;
       }
 
+      // Already in the requested state — see the matching guard in resolve.
       if (question.status !== "RESOLVED") {
-        socket.emit("question:error", { message: "Question is not resolved." });
         return;
       }
 
@@ -590,9 +631,10 @@ export function handleQuestionUnresolve(socket: Socket, io: Server): void {
  * Registers the `question:delete` event listener on the given socket.
  *
  * Permission rules:
+ *   - Anyone        → may delete their own question, whatever their role
  *   - PROFESSOR     → may delete any question
- *   - TA            → may delete any STUDENT's question, or their own
- *   - STUDENT       → never allowed
+ *   - TA            → may additionally delete any STUDENT's question
+ *   - STUDENT       → nothing beyond their own
  *
  * Roles are resolved via CourseEnrollment so that per-course TA status is
  * correctly detected regardless of the user's global User.role.
@@ -647,18 +689,18 @@ export function handleQuestionDelete(socket: Socket, io: Server): void {
 
       const requesterRole = requesterEnrollment?.role ?? "STUDENT";
 
-      // 5. Permission check
-      if (requesterRole === "STUDENT") {
-        socket.emit("question:error", {
-          message: "You do not have permission to delete this question.",
-        });
-        return;
-      }
+      // 5. Permission check — authors may always delete their own question
+      const isOwn = question.authorId === userId;
+      if (!isOwn) {
+        if (requesterRole === "STUDENT") {
+          socket.emit("question:error", {
+            message: "You do not have permission to delete this question.",
+          });
+          return;
+        }
 
-      if (requesterRole === "TA") {
-        // TAs may only delete their own messages or those by STUDENT authors
-        const isOwn = question.authorId === userId;
-        if (!isOwn) {
+        if (requesterRole === "TA") {
+          // TAs may only delete questions by STUDENT authors
           const authorEnrollment = question.authorId
             ? await prisma.courseEnrollment.findUnique({
                 where: { userId_courseId: { userId: question.authorId, courseId } },

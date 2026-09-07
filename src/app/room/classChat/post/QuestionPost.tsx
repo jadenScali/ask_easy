@@ -13,8 +13,9 @@ import {
   Presentation,
 } from "lucide-react";
 import { Question, Post } from "@/utils/types";
-import { UpvoteButton, renderUsername } from "./PostUtils";
+import { UpvoteButton, canRevealAuthor, renderUsername, RevealAuthorButton } from "./PostUtils";
 import { useRoom } from "../../RoomContext";
+import { ANSWER_MAX_LENGTH, ANSWER_MIN_LENGTH } from "@/utils/contentLimits";
 
 // ---------------------------------------------------------------------------
 // Reply composer
@@ -37,9 +38,14 @@ function ReplySection({ canAnswer, onSubmit, onCancel }: ReplySectionProps) {
     );
   }
 
+  // Same rule as the question composer: an out-of-bounds reply greys out Post
+  // rather than erroring. The server enforces the same bounds — see
+  // validateAnswerContent.
+  const trimmed = text.trim();
+  const canPost = trimmed.length >= ANSWER_MIN_LENGTH && trimmed.length <= ANSWER_MAX_LENGTH;
+
   const handleSubmit = () => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!canPost) return;
     onSubmit(trimmed);
     setText("");
     onCancel();
@@ -64,7 +70,7 @@ function ReplySection({ canAnswer, onSubmit, onCancel }: ReplySectionProps) {
           <Button variant="ghost" size="sm" onClick={onCancel}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSubmit} disabled={!text.trim()}>
+          <Button size="sm" onClick={handleSubmit} disabled={!canPost}>
             Post reply
           </Button>
         </div>
@@ -140,6 +146,7 @@ export default function QuestionPost({
   const [isReplying, setIsReplying] = useState(false);
   const [threadState, setThreadState] = useState<ThreadState>("default");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const { navigateToQuestionSlide } = useRoom();
 
   /** Parent (socket/API) is the source of truth; optimistic updates flow through `post`. */
@@ -172,19 +179,19 @@ export default function QuestionPost({
 
   return (
     <div
-      className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-l-2 border-green-200 border-l-green-400" : "bg-stone-075 border-l-2 border-stone-200 border-l-amber-400"}`}
+      id={`question-${post.id}`}
+      className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-green-400" : "bg-stone-075 border-amber-400"}`}
     >
       {/* Question body */}
-      <div className="font-semibold whitespace-pre-wrap text-stone-900">{post.content}</div>
+      <div className="font-semibold break-words whitespace-pre-wrap text-stone-900">
+        {post.content}
+      </div>
 
       {/* Meta row */}
       <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 text-xs text-stone-500">
-        {/* Left: status dot + username + time + toggle */}
+        {/* Left: username + time + toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            className={`w-2 h-2 rounded-full shrink-0 ${resolved ? "bg-green-500" : "bg-amber-400"}`}
-          />
-          {renderUsername(post.user, post.isAnonymous)}
+          {renderUsername(post.user, post.isAnonymous, revealed)}
           <span>{post.timestamp}</span>
 
           {post.slidePageIndex != null && post.slideSetId && (
@@ -249,6 +256,7 @@ export default function QuestionPost({
               <UpvoteButton
                 initialVotes={post.upvotes}
                 controlledVotes={post.upvotes}
+                initialUpvoted={post.hasUpvoted}
                 onUpvote={onUpvote}
               />
 
@@ -292,6 +300,10 @@ export default function QuestionPost({
                 </Button>
               )}
 
+              {canRevealAuthor(post) && (
+                <RevealAuthorButton revealed={revealed} onToggle={() => setRevealed((v) => !v)} />
+              )}
+
               {onDelete && (
                 <Button
                   variant="ghost"
@@ -310,7 +322,7 @@ export default function QuestionPost({
 
       {/* Thread */}
       {showThread && (
-        <div className="mt-1 pl-2 sm:pl-4 border-l-2 border-stone-300 space-y-1">
+        <div className="mt-1 pl-2 sm:pl-4 border-l border-stone-200/60 space-y-1">
           {isReplying && (
             <ReplySection
               canAnswer={canAnswer}

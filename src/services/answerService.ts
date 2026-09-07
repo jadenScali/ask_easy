@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { Role } from "@/generated/prisma";
+import { getCourseRoles } from "@/lib/sessionService";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -34,6 +35,10 @@ export interface AnswerResponse {
   isAnonymous: boolean;
   upvoteCount: number;
   createdAt: Date;
+  /** True for the requesting user's own answer, even when anonymity hides them. */
+  isMine: boolean;
+  /** True when the requesting user has already upvoted this answer. */
+  hasUpvoted: boolean;
 }
 
 export interface GetAnswersResult {
@@ -79,10 +84,13 @@ function canRevealAnonymous(role: Role): boolean {
 }
 
 /**
- * Strips author identity from an answer when it should be hidden from the
- * requesting user.
+ * Shapes an answer for the wire: strips author identity when it should be
+ * hidden from the requesting user, and reports the author's per-course role.
+ *
+ * `courseRole` comes from CourseEnrollment and wins over the author's global
+ * `User.role`, which stays STUDENT for someone who is a TA in this course.
  */
-function redactAuthorIfAnonymous(
+function toAnswerResponse(
   answer: {
     id: string;
     questionId: string;
@@ -92,10 +100,14 @@ function redactAuthorIfAnonymous(
     upvoteCount: number;
     createdAt: Date;
     author: { id: string; utorid: string; name: string; role: Role };
+    upvotes: { id: string }[];
   },
-  viewerCanReveal: boolean
+  viewerCanReveal: boolean,
+  viewerId: string,
+  courseRole: Role | undefined
 ): AnswerResponse {
   const hideAuthor = answer.isAnonymous && !viewerCanReveal;
+  const role = courseRole ?? answer.author.role;
 
   return {
     id: answer.id,
@@ -107,13 +119,15 @@ function redactAuthorIfAnonymous(
           id: answer.author.id,
           utorid: answer.author.utorid,
           name: answer.author.name,
-          role: answer.author.role,
+          role,
         },
-    authorRole: answer.author.role,
+    authorRole: role,
     isAccepted: answer.isAccepted,
     isAnonymous: answer.isAnonymous,
     upvoteCount: answer.upvoteCount,
     createdAt: answer.createdAt,
+    isMine: answer.author.id === viewerId,
+    hasUpvoted: answer.upvotes.length > 0,
   };
 }
 
@@ -206,6 +220,8 @@ export async function getQuestionAnswers(
       author: {
         select: { id: true, utorid: true, name: true, role: true },
       },
+      // The viewer's own upvote, so the button comes back filled after a reload.
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
     },
   });
 
@@ -223,9 +239,13 @@ export async function getQuestionAnswers(
 
   // ---- Redact anonymous authors for students -------------------------------
   const viewerCanReveal = canRevealAnonymous(viewerRole);
+  const courseRoles = await getCourseRoles(
+    question.session.courseId,
+    answers.map((a) => a.author.id)
+  );
 
   const transformed: AnswerResponse[] = answers.map((a) =>
-    redactAuthorIfAnonymous(a, viewerCanReveal)
+    toAnswerResponse(a, viewerCanReveal, userId, courseRoles.get(a.author.id))
   );
 
   return {
@@ -260,6 +280,7 @@ export async function getAnswerById(
       author: {
         select: { id: true, utorid: true, name: true, role: true },
       },
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
       question: {
         select: {
           id: true,
@@ -298,11 +319,12 @@ export async function getAnswerById(
   }
 
   const viewerCanReveal = canRevealAnonymous(viewerRole);
+  const authorRole = await getUserCourseRole(answer.author.id, answer.question.session.courseId);
 
   return {
     ok: true,
     data: {
-      answer: redactAuthorIfAnonymous(answer, viewerCanReveal),
+      answer: toAnswerResponse(answer, viewerCanReveal, userId, authorRole ?? undefined),
       questionId: answer.questionId,
     },
   };

@@ -30,6 +30,24 @@ export async function incrementRateLimit(key: string, windowSeconds: number): Pr
 }
 
 /**
+ * Seconds left in the current window for a rate-limit key.
+ *
+ * Only meaningful right after `checkRateLimit` has refused an action — it reads
+ * the TTL Redis set on the counter's first increment, which is when the caller
+ * may try again. Returns 0 when the key has no TTL or Redis is unreachable, so
+ * callers fall back to a message without a countdown rather than a wrong one.
+ */
+export async function rateLimitRetryAfter(key: string): Promise<number> {
+  try {
+    const ttl = await redisRateLimit.ttl(rateLimit(key));
+    return ttl > 0 ? ttl : 0;
+  } catch (error) {
+    console.error("[RateLimit] Redis error reading retry window:", error);
+    return 0;
+  }
+}
+
+/**
  * Check if a request should be rate limited
  * @param key - The identifier for rate limiting (e.g., IP address, user ID)
  * @param limit - Maximum number of requests allowed in the window

@@ -9,10 +9,17 @@ import ChatHeader from "./ChatHeader";
 import ChatInput from "./ChatInput";
 import FilterTabs from "./FilterTabs";
 import type { Question, Comment, Role } from "@/utils/types";
+import { showRateLimitToast } from "@/components/RateLimitToast";
 
 // ---------------------------------------------------------------------------
 // API response types (what the REST endpoints return)
 // ---------------------------------------------------------------------------
+
+interface RateLimitAwareError {
+  message: string;
+  code?: string;
+  retryAfterSeconds?: number;
+}
 
 interface APIQuestion {
   id: string;
@@ -21,11 +28,14 @@ interface APIQuestion {
   status: "OPEN" | "ANSWERED" | "RESOLVED";
   isAnonymous: boolean;
   upvoteCount: number;
+  hasUpvoted?: boolean;
   answerCount: number;
   createdAt: string;
   slidePageIndex?: number | null;
   slideSetId?: string | null;
   author: { id: string; utorid: string; name: string; role: Role } | null;
+  /** True for the viewer's own question, even when it was posted anonymously. */
+  isMine?: boolean;
 }
 
 interface APIAnswer {
@@ -39,7 +49,10 @@ interface APIAnswer {
   authorRole: Role;
   isAccepted: boolean;
   upvoteCount: number;
+  hasUpvoted?: boolean;
   createdAt: string;
+  /** True for the viewer's own answer, even when it was posted anonymously. */
+  isMine?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,6 +82,8 @@ function apiAnswerToPost(a: APIAnswer): Comment {
     content: a.content,
     upvotes: a.upvoteCount ?? 0,
     isAnonymous: a.isAnonymous,
+    isMine: a.isMine,
+    hasUpvoted: a.hasUpvoted,
   };
 }
 
@@ -90,8 +105,10 @@ function apiQuestionToPost(q: APIQuestion, answers: APIAnswer[]): Question {
     timestamp: fmt(q.createdAt),
     content: q.content,
     upvotes: q.upvoteCount,
+    hasUpvoted: q.hasUpvoted,
     isResolved: q.status === "RESOLVED",
     isAnonymous: q.isAnonymous,
+    isMine: q.isMine,
     replies: answers.map((a) => apiAnswerToPost(a)),
     visibility: q.visibility,
     slidePageIndex: q.slidePageIndex ?? null,
@@ -119,6 +136,8 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [questionError, setQuestionError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  /** Id of a question the viewer just asked, pending a scroll to its card. */
+  const [scrollTargetId, setScrollTargetId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   // Separate history that keeps deleted messages (marked as [deleted]) for the
@@ -190,8 +209,10 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       authorId?: string | null;
       authorName?: string | null;
       authorUtorid?: string | null;
+      authorRole?: Role;
       slidePageIndex?: number | null;
       slideSetId?: string | null;
+      isMine?: boolean;
     }) => {
       const user =
         payload.isAnonymous || !payload.authorName
@@ -201,7 +222,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
               utorid: payload.authorUtorid ?? undefined,
               username: payload.authorName,
               pfp: "",
-              role: "STUDENT" as Role,
+              role: payload.authorRole ?? ("STUDENT" as Role),
             };
 
       const newQuestion: Question = {
@@ -213,6 +234,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         upvotes: 0,
         isResolved: false,
         isAnonymous: payload.isAnonymous,
+        isMine: payload.isMine,
         replies: [],
         visibility: payload.visibility as "PUBLIC" | "INSTRUCTOR_ONLY",
         slidePageIndex: payload.slidePageIndex ?? null,
@@ -221,6 +243,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
 
       setQuestions((prev) => [...prev, newQuestion]);
       historyRef.current = [...historyRef.current, { ...newQuestion, replies: [] }];
+      if (payload.isMine) setScrollTargetId(payload.id);
     };
 
     const onQuestionUpdated = (payload: { id: string; upvoteCount: number }) => {
@@ -252,6 +275,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       authorRole: Role;
       isAccepted: boolean;
       createdAt: Date;
+      isMine?: boolean;
     }) => {
       const apiAnswer: APIAnswer = {
         id: payload.id,
@@ -271,6 +295,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         isAccepted: payload.isAccepted,
         upvoteCount: 0,
         createdAt: new Date(payload.createdAt).toISOString(),
+        isMine: payload.isMine,
       };
       const newReply = apiAnswerToPost(apiAnswer);
 
@@ -363,8 +388,20 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       );
     };
 
-    const onQuestionError = (payload: { message: string }) => {
+    // Rate-limit refusals arrive already phrased for the user, and they are not
+    // about what is in the composer — they get a toast instead of inline text.
+    const onQuestionError = (payload: RateLimitAwareError) => {
+      if (payload.code === "RATE_LIMITED") {
+        showRateLimitToast(payload.message, payload.retryAfterSeconds);
+        return;
+      }
       setQuestionError(payload.message);
+    };
+
+    const onAnswerError = (payload: RateLimitAwareError) => {
+      if (payload.code === "RATE_LIMITED") {
+        showRateLimitToast(payload.message, payload.retryAfterSeconds);
+      }
     };
 
     const onQuestionDeleted = (payload: { questionId: string }) => {
@@ -408,6 +445,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     socket.on("answer:deleted", onAnswerDeleted);
     socket.on("answer-mode:changed", onAnswerModeChanged);
     socket.on("question:error", onQuestionError);
+    socket.on("answer:error", onAnswerError);
     socket.on("question:author:revealed", onQuestionAuthorRevealed);
     socket.on("answer:author:revealed", onAnswerAuthorRevealed);
 
@@ -423,6 +461,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       socket.off("answer:deleted", onAnswerDeleted);
       socket.off("answer-mode:changed", onAnswerModeChanged);
       socket.off("question:error", onQuestionError);
+      socket.off("answer:error", onAnswerError);
       socket.off("question:author:revealed", onQuestionAuthorRevealed);
       socket.off("answer:author:revealed", onAnswerAuthorRevealed);
     };
@@ -436,10 +475,22 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     // when the questions state changes (which always follows a history update).
   }, [questions, chatHistoryRef]);
 
-  // Scroll to bottom whenever new questions arrive
+  // Land on the newest questions once the initial history has loaded
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [questions.length]);
+    if (isLoading) return;
+    bottomRef.current?.scrollIntoView();
+  }, [isLoading]);
+
+  // The list is sorted by resolved state then upvotes, so a question the viewer
+  // just asked can land anywhere — scroll to its card rather than to the bottom.
+  // Nothing to scroll to when the current filter or search excludes it.
+  useEffect(() => {
+    if (!scrollTargetId) return;
+    document
+      .getElementById(`question-${scrollTargetId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setScrollTargetId(null);
+  }, [scrollTargetId]);
 
   // -------------------------------------------------------------------------
   // Action handlers
@@ -486,17 +537,11 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   const handleResolve = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:resolve", { questionId });
-    // Optimistic update
-    setQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, isResolved: true } : q)));
   };
 
   const handleUnresolve = (questionId: string) => {
     if (!socket) return;
     socket.emit("question:unresolve", { questionId });
-    // Optimistic update
-    setQuestions((prev) =>
-      prev.map((q) => (q.id === questionId ? { ...q, isResolved: false } : q))
-    );
   };
 
   const handleSubmitAnswer = (questionId: string, content: string) => {
@@ -522,19 +567,32 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   };
 
   /**
-   * Returns true when the current user may delete the given post.
-   * - PROFESSOR: always (including anonymous posts)
-   * - TA: only named STUDENT posts, or their own named posts.
-   *       Anonymous posts are excluded because the client cannot verify the
-   *       author's role, and the author could be a professor or another TA.
-   * - STUDENT: never
+   * True when the post belongs to the current user. `isMine` is what makes
+   * this work for posts the viewer made anonymously — those come back with the
+   * author stripped, so the id comparison alone would say no.
    */
-  function canDelete(post: { user: { id?: string; role: Role } | null }): boolean {
+  function isOwnPost(post: { user: { id?: string } | null; isMine?: boolean }): boolean {
+    if (post.isMine) return true;
+    return post.user?.id !== undefined && post.user.id === userId;
+  }
+
+  /**
+   * Returns true when the current user may delete the given post.
+   * Mirrors the server rules in question/answer `delete` handlers:
+   * - Own post: always, whatever the viewer's role. `isMine` covers posts the
+   *   viewer made anonymously, where the author is stripped from the payload.
+   * - PROFESSOR: any post, including anonymous ones.
+   * - TA: any STUDENT-authored post. Anonymous posts by someone else are
+   *   excluded when the author is hidden, since the role can't be checked.
+   * - STUDENT: nothing beyond their own.
+   */
+  function canDelete(post: {
+    user: { id?: string; role: Role } | null;
+    isMine?: boolean;
+  }): boolean {
+    if (isOwnPost(post)) return true;
     if (role === "PROFESSOR") return true;
-    if (role === "TA") {
-      if (!post.user) return false; // anonymous — author role unknown, hide button
-      return post.user.role === "STUDENT" || post.user.id === userId;
-    }
+    if (role === "TA") return post.user?.role === "STUDENT";
     return false;
   }
 
@@ -623,12 +681,10 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
                       commentView={commentView}
                       onUpvote={() => handleUpvote(q.id)}
                       onResolve={
-                        isInstructor || q.user?.id === userId
-                          ? () => handleResolve(q.id)
-                          : undefined
+                        isInstructor || isOwnPost(q) ? () => handleResolve(q.id) : undefined
                       }
                       onUnresolve={isInstructor ? () => handleUnresolve(q.id) : undefined}
-                      canAnswer={canAnswerGlobal || q.user?.id === userId}
+                      canAnswer={canAnswerGlobal || (isOwnPost(q) && !q.isAnonymous)}
                       onSubmitAnswer={(content) => handleSubmitAnswer(q.id, content)}
                       onAnswerUpvote={handleAnswerUpvote}
                       onDeleteQuestion={canDelete(q) ? () => handleDeleteQuestion(q.id) : undefined}

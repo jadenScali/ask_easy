@@ -7,6 +7,7 @@ import {
   Navigation,
   Users,
   Square,
+  SquareMousePointer,
   Upload,
   LogOut,
   Unlink,
@@ -720,7 +721,7 @@ export default function SlideViewer({
     return (
       <div className="flex flex-col bg-stone-50 flex-1 w-full h-full items-center justify-center gap-3">
         <div className="w-12 h-12 rounded-md bg-stone-200 flex items-center justify-center">
-          <Upload className="w-5 h-5 text-stone-400" />
+          <SquareMousePointer className="w-5 h-5 text-stone-400" />
         </div>
         <p className="text-stone-500 text-sm">Waiting for professor to upload slides…</p>
       </div>

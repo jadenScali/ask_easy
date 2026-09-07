@@ -5,6 +5,27 @@ export interface SocketData {
   currentSessionId?: string;
 }
 
+export interface SocketErrorPayload {
+  message: string;
+  /**
+   * Set only on rate-limit refusals. The message is already short and phrased
+   * for the user, so clients can show it as a toast without rewriting it.
+   */
+  code?: "RATE_LIMITED";
+  /**
+   * Seconds until the refused action may be retried. Clients count this down
+   * beside the message; 0 or absent means the window could not be read.
+   */
+  retryAfterSeconds?: number;
+  /**
+   * "create" marks an error about the content being submitted, which belongs
+   * inline under the composer. Everything else refers to an action taken on an
+   * existing post and is surfaced as a toast instead. `code` wins over this:
+   * a rate-limit refusal always toasts, whatever it was refusing.
+   */
+  source?: "create";
+}
+
 export interface QuestionCreatePayload {
   content: string;
   sessionId: string;
@@ -23,6 +44,10 @@ export interface QuestionCreatedPayload {
   authorId?: string | null;
   authorName?: string | null;
   authorUtorid?: string | null;
+  /** Omitted for anonymous questions, alongside the other author fields. */
+  authorRole?: "STUDENT" | "TA" | "PROFESSOR";
+  /** Only ever true on the copy sent back to the author of the question. */
+  isMine?: boolean;
   slidePageIndex?: number | null;
   slideSetId?: string | null;
 }
@@ -65,6 +90,8 @@ export interface AnswerCreatedPayload {
   authorRole: "STUDENT" | "TA" | "PROFESSOR";
   isAccepted: boolean;
   createdAt: Date;
+  /** Only ever true on the copy sent back to the author of the answer. */
+  isMine?: boolean;
 }
 
 export interface QuestionUpvotePayload {
@@ -201,9 +228,9 @@ export interface ViewerCountPayload {
 /** Events the **server** can send to the **client**. */
 export interface ServerToClientEvents {
   "question:created": (payload: QuestionCreatedPayload) => void;
-  "question:error": (payload: { message: string }) => void;
+  "question:error": (payload: SocketErrorPayload) => void;
   "answer:created": (payload: AnswerCreatedPayload) => void;
-  "answer:error": (payload: { message: string }) => void;
+  "answer:error": (payload: SocketErrorPayload) => void;
   "question:updated": (payload: QuestionUpdatedPayload) => void;
   "answer:updated": (payload: AnswerUpdatedPayload) => void;
   "question:resolved": (payload: QuestionResolvedPayload) => void;

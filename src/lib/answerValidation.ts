@@ -1,15 +1,15 @@
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { checkRateLimit, rateLimitRetryAfter } from "@/lib/rateLimit";
 import { answerRateLimit } from "@/lib/redisKeys";
+import { ANSWER_MAX_LENGTH, ANSWER_MIN_LENGTH } from "@/utils/contentLimits";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-export const ANSWER_MIN_LENGTH = 1;
-export const ANSWER_MAX_LENGTH = 1000;
-export const RATE_LIMIT_COUNT = 15;
-export const RATE_LIMIT_WINDOW_SECONDS = 60;
+export { ANSWER_MIN_LENGTH, ANSWER_MAX_LENGTH };
+export const RATE_LIMIT_COUNT = 5;
+export const RATE_LIMIT_WINDOW_SECONDS = 10;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +27,7 @@ export interface QuestionValidationResult {
     id: string;
     sessionId: string;
     authorId: string | null;
+    isAnonymous: boolean;
   };
 }
 
@@ -64,11 +65,16 @@ export function validateAnswerContent(content: unknown): ValidationResult {
 
 /**
  * Checks whether the given user has exceeded the answer rate limit
- * (15 answers per 60-second window).
+ * (5 answers per 10-second window).
  * Returns true if the limit has been exceeded.
  */
 export async function checkAnswerRateLimit(userId: string): Promise<boolean> {
   return checkRateLimit(answerRateLimit(userId), RATE_LIMIT_COUNT, RATE_LIMIT_WINDOW_SECONDS);
+}
+
+/** Seconds until a refused answer may be retried. */
+export async function answerRetryAfter(userId: string): Promise<number> {
+  return rateLimitRetryAfter(answerRateLimit(userId));
 }
 
 /**
@@ -84,6 +90,7 @@ export async function validateQuestionForAnswers(
       id: true,
       sessionId: true,
       authorId: true,
+      isAnonymous: true,
       session: {
         select: {
           id: true,
@@ -110,6 +117,7 @@ export async function validateQuestionForAnswers(
       id: question.id,
       sessionId: question.sessionId,
       authorId: question.authorId,
+      isAnonymous: question.isAnonymous,
     },
   };
 }

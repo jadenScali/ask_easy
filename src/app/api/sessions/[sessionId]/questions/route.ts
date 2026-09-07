@@ -10,10 +10,12 @@ import {
 import {
   validateQuestionContent,
   validateVisibility,
+  checkQuestionRateLimit,
+  questionRetryAfter,
   validateSessionForQuestions,
   validateQuestionSlideContext,
 } from "@/lib/questionValidation";
-import { getSessionMembership } from "@/lib/sessionService";
+import { getCourseRoles, getSessionMembership } from "@/lib/sessionService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,6 +85,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       author: { select: { id: true, name: true, role: true, utorid: true } },
       _count: { select: { answers: true } },
       answers: { where: { isAccepted: true }, select: { id: true }, take: 1 },
+      // The viewer's own upvote, so the button comes back filled after a reload.
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
     } as const;
 
     const questions =
@@ -108,6 +112,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const canRevealAnonymous = role === "TA" || role === "PROFESSOR";
 
+    // Author roles come from CourseEnrollment, not User.role — the latter is
+    // global and stays STUDENT for someone who is a TA in this course, which
+    // would drop the instructor cap and mis-scope the delete buttons.
+    const courseRoles = await getCourseRoles(
+      membership.courseId!,
+      page.map((q) => q.authorId).filter((id): id is string => id !== null)
+    );
+
     const transformedQuestions = page.map((q) => ({
       id: q.id,
       content: q.content,
@@ -115,13 +127,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       status: q.status,
       isAnonymous: q.isAnonymous,
       upvoteCount: q.upvoteCount,
+      hasUpvoted: q.upvotes.length > 0,
       answerCount: q._count.answers,
       hasAcceptedAnswer: q.answers.length > 0,
       acceptedAnswerId: q.answers[0]?.id ?? null,
       createdAt: q.createdAt,
       slidePageIndex: q.slidePageIndex,
       slideSetId: q.slideSetId,
-      author: q.isAnonymous && !canRevealAnonymous ? null : q.author,
+      author:
+        q.isAnonymous && !canRevealAnonymous
+          ? null
+          : q.author && { ...q.author, role: courseRoles.get(q.author.id) ?? q.author.role },
+      /** Lets the author delete their own post even when anonymity hides them. */
+      isMine: q.authorId === userId,
     }));
 
     const payload: {
@@ -168,7 +186,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Validations:
  *   1. Content length bounds
  *   2. Visibility is valid if provided
- *   3. Rate limit (10 questions per 60 seconds per user)
+ *   3. Rate limit (2 questions per 10 seconds per user, per session)
  *   4. Session exists and has submissions enabled
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -207,6 +225,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const visibilityValidation = validateVisibility(body.visibility);
     if (!visibilityValidation.valid) {
       return NextResponse.json({ error: visibilityValidation.error }, { status: 400 });
+    }
+
+    // 5b. Rate limit — counter is per user per session
+    if (await checkQuestionRateLimit(authorId, sessionId)) {
+      const retryAfter = await questionRetryAfter(authorId, sessionId);
+      return NextResponse.json(
+        { error: "Too many questions.", retryAfterSeconds: retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
     }
 
     // 6. Validate session using shared validation (submissions enabled check)
