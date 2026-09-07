@@ -9,6 +9,9 @@ import { SlideUpdateContext } from "../SlideUpdateContext";
 import { useRoom } from "../RoomContext";
 import type { Role } from "@/utils/types";
 
+/** Course names are cut to this many characters so the header controls keep their room. */
+const TITLE_MAX_CHARS = 6;
+
 interface ChatHeaderProps {
   role: Role;
   answerMode: "all" | "instructors_only";
@@ -116,8 +119,8 @@ export default function ChatHeader({
                   </button>
                 )}
                 {sessionTitle && (
-                  <h1 className="text-xl font-bold truncate max-w-[140px] sm:max-w-xs">
-                    {sessionTitle}
+                  <h1 className="text-xl font-bold shrink-0" title={sessionTitle}>
+                    {sessionTitle.slice(0, TITLE_MAX_CHARS)}
                   </h1>
                 )}
               </div>
