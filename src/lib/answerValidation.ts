@@ -27,6 +27,7 @@ export interface QuestionValidationResult {
     id: string;
     sessionId: string;
     authorId: string | null;
+    isAnonymous: boolean;
   };
 }
 
@@ -84,6 +85,7 @@ export async function validateQuestionForAnswers(
       id: true,
       sessionId: true,
       authorId: true,
+      isAnonymous: true,
       session: {
         select: {
           id: true,
@@ -110,6 +112,7 @@ export async function validateQuestionForAnswers(
       id: question.id,
       sessionId: question.sessionId,
       authorId: question.authorId,
+      isAnonymous: question.isAnonymous,
     },
   };
 }

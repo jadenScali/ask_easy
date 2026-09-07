@@ -669,7 +669,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
                         isInstructor || isOwnPost(q) ? () => handleResolve(q.id) : undefined
                       }
                       onUnresolve={isInstructor ? () => handleUnresolve(q.id) : undefined}
-                      canAnswer={canAnswerGlobal || isOwnPost(q)}
+                      canAnswer={canAnswerGlobal || (isOwnPost(q) && !q.isAnonymous)}
                       onSubmitAnswer={(content) => handleSubmitAnswer(q.id, content)}
                       onAnswerUpvote={handleAnswerUpvote}
                       onDeleteQuestion={canDelete(q) ? () => handleDeleteQuestion(q.id) : undefined}

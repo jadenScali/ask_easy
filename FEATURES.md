@@ -118,7 +118,7 @@ A comprehensive list of every feature in the AskEasy platform.
 ### Answer Mode Restriction
 
 - Professor can toggle between "all" (everyone can answer) and "instructors_only" (only TAs/professors can answer)
-- **Exception**: the question author can always answer their own question regardless of mode
+- **Exception**: the question author can always answer their own question regardless of mode — unless they asked anonymously, since with everyone else locked out a reply would identify them as the asker
 - **Default**: instructors only
 - Stored in Redis with 24-hour TTL; late joiners sync on connect
 
@@ -239,14 +239,14 @@ If Redis is unavailable, rate limiting fails closed (blocks all requests).
 
 ### Answer Operations
 
-| Action                   |  Student   | TA  | Professor |
-| ------------------------ | :--------: | :-: | :-------: |
-| Answer (open mode)       |    Yes     | Yes |    Yes    |
-| Answer (restricted mode) | Own Q only | Yes |    Yes    |
-| Upvote                   |    Yes     | Yes |    Yes    |
-| Delete own               |    Yes     | Yes |    Yes    |
-| Delete (student As)      |            | Yes |    Yes    |
-| Delete (TA As)           |            |     |    Yes    |
+| Action                   |                Student                | TA  | Professor |
+| ------------------------ | :-----------------------------------: | :-: | :-------: |
+| Answer (open mode)       |                  Yes                  | Yes |    Yes    |
+| Answer (restricted mode) | Own Q only (not if asked anonymously) | Yes |    Yes    |
+| Upvote                   |                  Yes                  | Yes |    Yes    |
+| Delete own               |                  Yes                  | Yes |    Yes    |
+| Delete (student As)      |                                       | Yes |    Yes    |
+| Delete (TA As)           |                                       |     |    Yes    |
 
 ---
 
