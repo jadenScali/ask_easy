@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unsealData } from "iron-session";
 
+import { resolveCookieName } from "@/lib/devCookie";
 import type { SessionData } from "@/lib/session";
 
 // ---------------------------------------------------------------------------
@@ -34,8 +35,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for a valid iron-session cookie
-  const cookieValue = request.cookies.get("ask_easy_session")?.value;
+  // Check for a valid iron-session cookie. The name must match the one
+  // /api/auth/session writes — under `pnpm dev:all` that is per-instance.
+  const cookieValue = request.cookies.get(resolveCookieName())?.value;
   if (cookieValue) {
     try {
       const sessionSecret = process.env.SESSION_SECRET;

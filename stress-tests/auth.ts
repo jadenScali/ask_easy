@@ -19,7 +19,9 @@ interface SessionData {
   role: string;
 }
 
-const COOKIE_NAME = "ask_easy_session";
+// Matches resolveCookieName() in src/lib/devCookie.ts — `pnpm dev:all` runs
+// each instance with its own cookie name.
+const COOKIE_NAME = process.env.SESSION_COOKIE_NAME || "ask_easy_session";
 
 export async function mintCookie(user: StressUser, role: string): Promise<string> {
   const secret = process.env.SESSION_SECRET;

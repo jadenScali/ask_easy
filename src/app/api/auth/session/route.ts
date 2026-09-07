@@ -46,8 +46,10 @@ export async function GET(request: NextRequest) {
     email = request.headers.get("mail") ?? request.headers.get("email");
   }
 
-  if (!isProd || !utorid) {
-    // Dev mode or local Docker without Shibboleth — fall back to DEV_UTORID.
+  if (!isProd) {
+    // Dev only — no Shibboleth available, so fall back to DEV_UTORID.
+    // This must never run in production: a missing `utorid` header there is an
+    // authentication failure, not an invitation to log in as DEV_UTORID.
     utorid = utorid ?? process.env.DEV_UTORID ?? null;
     name = name ?? process.env.DEV_NAME ?? utorid;
     email = email ?? process.env.DEV_EMAIL ?? `${utorid}@mail.utoronto.ca`;

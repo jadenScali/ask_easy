@@ -1,5 +1,7 @@
 import type { SessionOptions } from "iron-session";
 
+import { resolveCookieName } from "@/lib/devCookie";
+
 // ---------------------------------------------------------------------------
 // Session data shape stored inside the encrypted cookie
 // ---------------------------------------------------------------------------
@@ -33,7 +35,9 @@ export function getSessionOptions(): SessionOptions {
 
   return {
     password: secret,
-    cookieName: "ask_easy_session",
+    // Normally "ask_easy_session". `pnpm dev:all` overrides it per instance so
+    // three dev servers on localhost don't clobber each other's cookie.
+    cookieName: resolveCookieName(),
     cookieOptions: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
