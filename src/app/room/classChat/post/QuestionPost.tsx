@@ -13,7 +13,7 @@ import {
   Presentation,
 } from "lucide-react";
 import { Question, Post } from "@/utils/types";
-import { UpvoteButton, renderUsername } from "./PostUtils";
+import { UpvoteButton, canRevealAuthor, renderUsername, RevealAuthorButton } from "./PostUtils";
 import { useRoom } from "../../RoomContext";
 
 // ---------------------------------------------------------------------------
@@ -140,6 +140,7 @@ export default function QuestionPost({
   const [isReplying, setIsReplying] = useState(false);
   const [threadState, setThreadState] = useState<ThreadState>("default");
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const { navigateToQuestionSlide } = useRoom();
 
   /** Parent (socket/API) is the source of truth; optimistic updates flow through `post`. */
@@ -182,7 +183,7 @@ export default function QuestionPost({
       <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 text-xs text-stone-500">
         {/* Left: username + time + toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          {renderUsername(post.user, post.isAnonymous)}
+          {renderUsername(post.user, post.isAnonymous, revealed)}
           <span>{post.timestamp}</span>
 
           {post.slidePageIndex != null && post.slideSetId && (
@@ -289,6 +290,10 @@ export default function QuestionPost({
                   <CheckCircle2 className="h-4 w-4 group-hover/unresolve:hidden" />
                   <Undo2 className="h-4 w-4 hidden group-hover/unresolve:block" />
                 </Button>
+              )}
+
+              {canRevealAuthor(post) && (
+                <RevealAuthorButton revealed={revealed} onToggle={() => setRevealed((v) => !v)} />
               )}
 
               {onDelete && (

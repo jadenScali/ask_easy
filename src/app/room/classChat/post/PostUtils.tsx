@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ArrowBigUp, GraduationCap } from "lucide-react";
+import { ArrowBigUp, Eye, EyeOff, GraduationCap } from "lucide-react";
 import { Post, User, getInitials, isLikelyAvatarImageUrl } from "@/utils/types";
 
-export function renderAvatar(post: Post) {
-  if (post?.user) {
+export function renderAvatar(post: Post, revealed?: boolean) {
+  if (post?.user && !(post.isAnonymous && !revealed)) {
     return (
       <Avatar className="h-10 w-10">
         {isLikelyAvatarImageUrl(post.user.pfp) && (
@@ -89,8 +89,10 @@ export function renderRoleIcon(user: User) {
   return null;
 }
 
-export function renderUsername(user: User | null, isAnonymous?: boolean) {
-  if (!user) {
+export function renderUsername(user: User | null, isAnonymous?: boolean, revealed?: boolean) {
+  // Anonymous posts read as "Anonymous" for everyone. TAs and professors are
+  // sent the author anyway, so revealing is a local toggle — see RevealAuthorButton.
+  if (!user || (isAnonymous && !revealed)) {
     return <span className="font-semibold text-foreground italic text-stone-400">Anonymous</span>;
   }
   return (
@@ -99,6 +101,35 @@ export function renderUsername(user: User | null, isAnonymous?: boolean) {
       <span className="line-clamp-2">{user.username}</span>
       {isAnonymous && <span className="italic text-stone-400 font-normal">(anonymous)</span>}
     </span>
+  );
+}
+
+/**
+ * True when an anonymous post arrived with its author attached — which only
+ * happens for TAs and professors, the roles allowed to unmask it.
+ */
+export function canRevealAuthor(post: Post): boolean {
+  return !!post.isAnonymous && !!post.user;
+}
+
+interface RevealAuthorButtonProps {
+  revealed: boolean;
+  onToggle: () => void;
+}
+
+export function RevealAuthorButton({ revealed, onToggle }: RevealAuthorButtonProps) {
+  const Icon = revealed ? EyeOff : Eye;
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-xs gap-1 text-stone-400 hover:text-stone-900 hover:bg-stone-200/60 transition-colors"
+      onClick={onToggle}
+      title={revealed ? "Hide author" : "Reveal author"}
+    >
+      <Icon className="h-4 w-4" />
+    </Button>
   );
 }
 
