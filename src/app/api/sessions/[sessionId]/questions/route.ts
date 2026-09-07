@@ -83,6 +83,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       author: { select: { id: true, name: true, role: true, utorid: true } },
       _count: { select: { answers: true } },
       answers: { where: { isAccepted: true }, select: { id: true }, take: 1 },
+      // The viewer's own upvote, so the button comes back filled after a reload.
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
     } as const;
 
     const questions =
@@ -123,6 +125,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       status: q.status,
       isAnonymous: q.isAnonymous,
       upvoteCount: q.upvoteCount,
+      hasUpvoted: q.upvotes.length > 0,
       answerCount: q._count.answers,
       hasAcceptedAnswer: q.answers.length > 0,
       acceptedAnswerId: q.answers[0]?.id ?? null,

@@ -44,6 +44,7 @@ export default function CommentPost({ post, onUpvote, onDelete }: CommentPostPro
             <UpvoteButton
               initialVotes={post.upvotes}
               controlledVotes={post.upvotes}
+              initialUpvoted={post.hasUpvoted}
               onUpvote={onUpvote}
             />
           )}

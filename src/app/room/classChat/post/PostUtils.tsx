@@ -32,12 +32,19 @@ interface UpvoteButtonProps {
   initialVotes: number;
   /** When provided, clicking emits an upvote and displays the server-controlled count. */
   controlledVotes?: number;
+  /** Whether the viewer had already upvoted when the post was loaded. */
+  initialUpvoted?: boolean;
   onUpvote?: () => void;
 }
 
-export function UpvoteButton({ initialVotes, controlledVotes, onUpvote }: UpvoteButtonProps) {
+export function UpvoteButton({
+  initialVotes,
+  controlledVotes,
+  initialUpvoted = false,
+  onUpvote,
+}: UpvoteButtonProps) {
   const [localVotes, setLocalVotes] = useState(initialVotes);
-  const [isUpvoted, setIsUpvoted] = useState(false);
+  const [isUpvoted, setIsUpvoted] = useState(initialUpvoted);
 
   const displayedVotes = controlledVotes !== undefined ? controlledVotes : localVotes;
 

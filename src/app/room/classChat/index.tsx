@@ -21,6 +21,7 @@ interface APIQuestion {
   status: "OPEN" | "ANSWERED" | "RESOLVED";
   isAnonymous: boolean;
   upvoteCount: number;
+  hasUpvoted?: boolean;
   answerCount: number;
   createdAt: string;
   slidePageIndex?: number | null;
@@ -41,6 +42,7 @@ interface APIAnswer {
   authorRole: Role;
   isAccepted: boolean;
   upvoteCount: number;
+  hasUpvoted?: boolean;
   createdAt: string;
   /** True for the viewer's own answer, even when it was posted anonymously. */
   isMine?: boolean;
@@ -74,6 +76,7 @@ function apiAnswerToPost(a: APIAnswer): Comment {
     upvotes: a.upvoteCount ?? 0,
     isAnonymous: a.isAnonymous,
     isMine: a.isMine,
+    hasUpvoted: a.hasUpvoted,
   };
 }
 
@@ -95,6 +98,7 @@ function apiQuestionToPost(q: APIQuestion, answers: APIAnswer[]): Question {
     timestamp: fmt(q.createdAt),
     content: q.content,
     upvotes: q.upvoteCount,
+    hasUpvoted: q.hasUpvoted,
     isResolved: q.status === "RESOLVED",
     isAnonymous: q.isAnonymous,
     isMine: q.isMine,

@@ -37,6 +37,8 @@ export interface AnswerResponse {
   createdAt: Date;
   /** True for the requesting user's own answer, even when anonymity hides them. */
   isMine: boolean;
+  /** True when the requesting user has already upvoted this answer. */
+  hasUpvoted: boolean;
 }
 
 export interface GetAnswersResult {
@@ -98,6 +100,7 @@ function toAnswerResponse(
     upvoteCount: number;
     createdAt: Date;
     author: { id: string; utorid: string; name: string; role: Role };
+    upvotes: { id: string }[];
   },
   viewerCanReveal: boolean,
   viewerId: string,
@@ -124,6 +127,7 @@ function toAnswerResponse(
     upvoteCount: answer.upvoteCount,
     createdAt: answer.createdAt,
     isMine: answer.author.id === viewerId,
+    hasUpvoted: answer.upvotes.length > 0,
   };
 }
 
@@ -216,6 +220,8 @@ export async function getQuestionAnswers(
       author: {
         select: { id: true, utorid: true, name: true, role: true },
       },
+      // The viewer's own upvote, so the button comes back filled after a reload.
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
     },
   });
 
@@ -274,6 +280,7 @@ export async function getAnswerById(
       author: {
         select: { id: true, utorid: true, name: true, role: true },
       },
+      upvotes: { where: { userId }, select: { id: true }, take: 1 },
       question: {
         select: {
           id: true,

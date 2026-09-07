@@ -246,6 +246,7 @@ export default function QuestionPost({
               <UpvoteButton
                 initialVotes={post.upvotes}
                 controlledVotes={post.upvotes}
+                initialUpvoted={post.hasUpvoted}
                 onUpvote={onUpvote}
               />
 
