@@ -183,17 +183,17 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     }
   };
 
-  const showBrowserNotification = (question: Question, mode = notificationMode) => {
+  const showBrowserNotification = (
+    title: string,
+    body: string,
+    tag: string,
+    mode = notificationMode
+  ) => {
     if (mode !== "browser" || typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission !== "granted") return;
     if (document.visibilityState === "visible" && document.hasFocus()) return;
 
-    const author =
-      question.isAnonymous || !question.user?.username ? "Anonymous" : question.user.username;
-    const notification = new Notification(sessionTitle || "New question", {
-      body: `${author}: ${question.content}`,
-      tag: `question-${question.id}`,
-    });
+    const notification = new Notification(title, { body, tag });
 
     setTimeout(() => notification.close(), 5000);
   };
@@ -297,9 +297,17 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
 
       setQuestions((prev) => [...prev, newQuestion]);
       historyRef.current = [...historyRef.current, { ...newQuestion, replies: [] }];
-      playQuestionBeep();
       if (!payload.isMine) {
-        showBrowserNotification(newQuestion);
+        const author =
+          newQuestion.isAnonymous || !newQuestion.user?.username
+            ? "Anonymous"
+            : newQuestion.user.username;
+        playQuestionBeep();
+        showBrowserNotification(
+          sessionTitle || "New question",
+          `${author}: ${newQuestion.content}`,
+          `question-${newQuestion.id}`
+        );
       }
       if (payload.isMine) setScrollTargetId(payload.id);
     };
@@ -356,6 +364,12 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
         isMine: payload.isMine,
       };
       const newReply = apiAnswerToPost(apiAnswer);
+      const question = historyRef.current.find((q) => q.id === payload.questionId);
+      const isFollowUpOnMyThread =
+        !payload.isMine &&
+        (question?.isMine === true || question?.replies.some((reply) => isOwnPost(reply)) === true);
+      const replyAuthor =
+        newReply.isAnonymous || !newReply.user?.username ? "Anonymous" : newReply.user.username;
 
       setQuestions((prev) =>
         prev.map((q) =>
@@ -365,6 +379,14 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       historyRef.current = historyRef.current.map((q) =>
         q.id === payload.questionId ? { ...q, replies: [...q.replies, { ...newReply }] } : q
       );
+      if (isFollowUpOnMyThread) {
+        playQuestionBeep();
+        showBrowserNotification(
+          sessionTitle || "New reply",
+          `${replyAuthor} replied: ${newReply.content}`,
+          `answer-${newReply.id}`
+        );
+      }
     };
 
     const onAnswerUpdated = (payload: { id: string; questionId: string; upvoteCount: number }) => {
