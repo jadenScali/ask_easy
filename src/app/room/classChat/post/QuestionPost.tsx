@@ -177,7 +177,9 @@ export default function QuestionPost({
       className={`flex flex-col gap-2 rounded-md p-4 border transition-colors duration-200 ease-out ${resolved ? "bg-green-50/60 border-green-400" : "bg-stone-075 border-amber-400"}`}
     >
       {/* Question body */}
-      <div className="font-semibold whitespace-pre-wrap text-stone-900">{post.content}</div>
+      <div className="font-semibold break-words whitespace-pre-wrap text-stone-900">
+        {post.content}
+      </div>
 
       {/* Meta row */}
       <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-1 text-xs text-stone-500">
