@@ -126,7 +126,7 @@ interface ClassChatProps {
 }
 
 export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
-  const { socket, sessionId, userId, role, slideContextRef } = useRoom();
+  const { socket, sessionId, userId, role, slideContextRef, sessionTitle } = useRoom();
 
   const [commentView, setCommentView] = useState<"all" | "unresolved" | "resolved">("all");
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -169,6 +169,33 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
     gainNode.connect(audioContext.destination);
     oscillator.start(now);
     oscillator.stop(now + 0.18);
+  };
+
+  const requestBrowserNotificationPermission = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+
+    try {
+      return (await Notification.requestPermission()) === "granted";
+    } catch {
+      return false;
+    }
+  };
+
+  const showBrowserNotification = (question: Question, mode = notificationMode) => {
+    if (mode !== "browser" || typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+    if (document.visibilityState === "visible" && document.hasFocus()) return;
+
+    const author =
+      question.isAnonymous || !question.user?.username ? "Anonymous" : question.user.username;
+    const notification = new Notification(sessionTitle || "New question", {
+      body: `${author}: ${question.content}`,
+      tag: `question-${question.id}`,
+    });
+
+    setTimeout(() => notification.close(), 5000);
   };
 
   // -------------------------------------------------------------------------
@@ -271,6 +298,9 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       setQuestions((prev) => [...prev, newQuestion]);
       historyRef.current = [...historyRef.current, { ...newQuestion, replies: [] }];
       playQuestionBeep();
+      if (!payload.isMine) {
+        showBrowserNotification(newQuestion);
+      }
       if (payload.isMine) setScrollTargetId(payload.id);
     };
 
@@ -585,11 +615,13 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   };
 
   const handleToggleNotificationMode = () => {
-    setNotificationMode((current) => {
-      const nextMode = current === "off" ? "sound" : current === "sound" ? "browser" : "off";
-      if (nextMode !== "off") playQuestionBeep(nextMode);
-      return nextMode;
-    });
+    const nextMode =
+      notificationMode === "off" ? "sound" : notificationMode === "sound" ? "browser" : "off";
+    setNotificationMode(nextMode);
+    if (nextMode !== "off") playQuestionBeep(nextMode);
+    if (nextMode === "browser") {
+      void requestBrowserNotificationPermission();
+    }
   };
 
   const handleDeleteQuestion = (questionId: string) => {
