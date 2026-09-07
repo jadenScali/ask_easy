@@ -144,6 +144,32 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   // Separate history that keeps deleted messages (marked as [deleted]) for the
   // session export. Never removes items — deletions are marked in-place.
   const historyRef = useRef<Question[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const playQuestionBeep = (mode = notificationMode) => {
+    if (mode === "off" || typeof window === "undefined") return;
+
+    const audioContext = audioContextRef.current ?? new window.AudioContext();
+    audioContextRef.current = audioContext;
+    if (audioContext.state === "suspended") {
+      void audioContext.resume().catch(() => {});
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    const now = audioContext.currentTime;
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, now);
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.14, now + 0.01);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.18);
+  };
 
   // -------------------------------------------------------------------------
   // Initial data fetch
@@ -244,6 +270,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
 
       setQuestions((prev) => [...prev, newQuestion]);
       historyRef.current = [...historyRef.current, { ...newQuestion, replies: [] }];
+      playQuestionBeep();
       if (payload.isMine) setScrollTargetId(payload.id);
     };
 
@@ -466,7 +493,7 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
       socket.off("question:author:revealed", onQuestionAuthorRevealed);
       socket.off("answer:author:revealed", onAnswerAuthorRevealed);
     };
-  }, [socket, sessionId, chatHistoryRef, role, userId]);
+  }, [socket, sessionId, chatHistoryRef, role, userId, notificationMode]);
 
   // Keep chatHistoryRef in sync whenever historyRef is updated via data load
   // or new questions/answers arriving (deletions update it inline above).
@@ -558,9 +585,11 @@ export default function ClassChat({ chatHistoryRef }: ClassChatProps) {
   };
 
   const handleToggleNotificationMode = () => {
-    setNotificationMode((current) =>
-      current === "off" ? "sound" : current === "sound" ? "browser" : "off"
-    );
+    setNotificationMode((current) => {
+      const nextMode = current === "off" ? "sound" : current === "sound" ? "browser" : "off";
+      if (nextMode !== "off") playQuestionBeep(nextMode);
+      return nextMode;
+    });
   };
 
   const handleDeleteQuestion = (questionId: string) => {
